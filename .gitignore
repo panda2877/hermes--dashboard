@@ -25,6 +25,11 @@ unpackage/
 *-chrome-debug.log
 .DS_Store
 
+# BFF (backend)
+backend/node_modules/
+backend/logs/
+backend/*.local.env
+
 # Lock files (optional - some teams keep these)
 # package-lock.json
 # yarn.lock
