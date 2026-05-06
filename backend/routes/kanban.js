@@ -9,8 +9,9 @@ const sqlite = require('../services/sqlite')
 
 // ── GET /api/kanban/tasks ─────────────────────────────────────────────────────
 
-router.get('/tasks', (req, res) => {
+router.get('/tasks', async (req, res) => {
   try {
+    await sqlite.reloadIfChanged()
     const { status, assignee, priority, project } = req.query
     const tasks = sqlite.getTasks({ status, assignee, priority, project })
     res.json({ total: tasks.length, data: tasks })
@@ -22,8 +23,9 @@ router.get('/tasks', (req, res) => {
 
 // ── GET /api/kanban/tasks/:id ─────────────────────────────────────────────────
 
-router.get('/tasks/:id', (req, res) => {
+router.get('/tasks/:id', async (req, res) => {
   try {
+    await sqlite.reloadIfChanged()
     const task = sqlite.getTaskById(req.params.id)
     if (!task) {
       return res.status(404).json({ error: '任务不存在' })
@@ -37,7 +39,7 @@ router.get('/tasks/:id', (req, res) => {
 
 // ── PUT /api/kanban/tasks/:id/status ─────────────────────────────────────────
 
-router.put('/tasks/:id/status', (req, res) => {
+router.put('/tasks/:id/status', async (req, res) => {
   try {
     const { status } = req.body || {}
     const validStatuses = ['backlog', 'in_progress', 'done', 'completed']
@@ -49,7 +51,9 @@ router.put('/tasks/:id/status', (req, res) => {
       })
     }
 
+    await sqlite.reloadIfChanged()
     sqlite.updateTaskStatus(req.params.id, status)
+    await sqlite.saveDb()  // 持久化写入磁盘
     const updated = sqlite.getTaskById(req.params.id)
     res.json({ success: true, task: updated })
   } catch (err) {
@@ -60,8 +64,9 @@ router.put('/tasks/:id/status', (req, res) => {
 
 // ── GET /api/kanban/stats ────────────────────────────────────────────────────
 
-router.get('/stats', (req, res) => {
+router.get('/stats', async (req, res) => {
   try {
+    await sqlite.reloadIfChanged()
     const rows = sqlite.getKanbanStats()
     // 转换为 { backlog: N, in_progress: N, done: N }
     const stats = {}

@@ -523,6 +523,13 @@ function cleanTitle(title: string): string {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 4px;
+
+  @media (max-width: 380px) {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 3px;
+  }
 }
 
 .task-project {

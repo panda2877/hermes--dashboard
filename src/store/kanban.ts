@@ -127,10 +127,14 @@ export const useKanbanStore = defineStore('kanban', {
           ? allTasks.filter(t => t.project === this.filter.project)
           : allTasks
 
+        // 按 ID 升序排列
+        const sortById = (arr: TaskItem[]) =>
+          [...arr].sort((a, b) => a.id.localeCompare(b.id))
+
         // 按状态分列
-        this.backlog    = filtered.filter(t => t.status === 'backlog')
-        this.inProgress = filtered.filter(t => t.status === 'in_progress')
-        this.done       = filtered.filter(t => t.status === 'done' || t.status === 'completed')
+        this.backlog    = sortById(filtered.filter(t => t.status === 'backlog'))
+        this.inProgress = sortById(filtered.filter(t => t.status === 'in_progress'))
+        this.done       = sortById(filtered.filter(t => t.status === 'done' || t.status === 'completed'))
       } catch (err: any) {
         console.error('[kanban] fetchTasks failed:', err)
         this.error = err?.message || '加载失败'

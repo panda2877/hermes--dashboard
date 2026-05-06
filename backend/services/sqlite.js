@@ -9,6 +9,8 @@ const fs = require('fs')
 const config = require('../config')
 
 let db = null
+let dbFilePath = null
+let dbFileMtime = null
 
 /**
  * 初始化数据库（异步，需等待 WASM 加载）
@@ -21,6 +23,8 @@ async function initDb() {
   if (fs.existsSync(dbPath)) {
     const buffer = fs.readFileSync(dbPath)
     db = new SQL.Database(buffer)
+    dbFilePath = dbPath
+    dbFileMtime = fs.statSync(dbPath).mtimeMs
     console.log(`[sqlite] Opened: ${dbPath}`)
   } else {
     db = new SQL.Database()
@@ -28,6 +32,27 @@ async function initDb() {
   }
 
   return db
+}
+
+/**
+ * 检测文件是否被外部修改，如果是则重新加载数据库
+ * Hermes CLI 写文件后，BFF 需要感知到最新数据
+ */
+async function reloadIfChanged() {
+  if (!db || !dbFilePath) return
+  try {
+    const mtime = fs.statSync(dbFilePath).mtimeMs
+    if (mtime > dbFileMtime) {
+      console.log(`[sqlite] DB file changed, reloading...`)
+      db.close()
+      const SQL = await initSqlJs()
+      const buffer = fs.readFileSync(dbFilePath)
+      db = new SQL.Database(buffer)
+      dbFileMtime = mtime
+    }
+  } catch (err) {
+    console.warn('[sqlite] reloadIfChanged error:', err.message)
+  }
 }
 
 /**
@@ -56,6 +81,19 @@ function closeDb() {
     db.close()
     db = null
   }
+}
+
+/**
+ * 将内存中的 DB 写入磁盘（持久化 updateTaskStatus 等写操作）
+ */
+async function saveDb() {
+  if (!db || !dbFilePath) return
+  const data = db.export()
+  const buffer = Buffer.from(data)
+  fs.writeFileSync(dbFilePath, buffer)
+  // 更新 mtime，防止自身写入触发 reload
+  dbFileMtime = fs.statSync(dbFilePath).mtimeMs
+  console.log(`[sqlite] Saved to disk: ${dbFilePath}`)
 }
 
 // ── 看板任务查询 ─────────────────────────────────────────────────────────────
@@ -188,6 +226,8 @@ function getKanbanStats() {
 module.exports = {
   initDb,
   closeDb,
+  reloadIfChanged,
+  saveDb,
   getTasks,
   getTaskById,
   updateTaskStatus,
