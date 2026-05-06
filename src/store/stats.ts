@@ -24,27 +24,31 @@ export interface StatsSummary {
   modelDistribution: ModelStats[]
 }
 
-interface StatsState {
-  // 数据
-  totalTokens: number
-  totalPromptTokens: number
-  totalCompletionTokens: number
-  totalCost: number
-  dailyStats: DailyStats[]
-  modelStats: ModelStats[]
-  modelList: string[]
-  // 筛选状态
-  timeRange: 'today' | 'week' | 'month'
-  selectedModel: string
-  // 加载状态
-  loading: boolean
-  error: string | null
+// ── 费用计算常量 ─────────────────────────────────────────────────────────────
+
+const PRICE_RMB_PER_M_TOKEN = 0.15 // 元 / 百万 tokens
+
+// 各模型单价（元 / 百万 tokens）
+const MODEL_PRICES: Record<string, number> = {
+  'deepseek-sensenova': 0.15,
+  'minimax-main': 0.15,
+  'deepseek-backup': 1.0,
+  // 空字符串模型
+  '': 0,
+}
+
+/**
+ * 计算单个模型的费用（元）
+ */
+function calcModelCost(tokens: number, model: string): number {
+  const price = MODEL_PRICES[model] ?? 0.15
+  return (tokens / 1_000_000) * price
 }
 
 // ── 日期范围辅助 ─────────────────────────────────────────────────────────────
 
 function getDateRange(range: 'today' | 'week' | 'month'): { startDate: string; endDate: string } {
-  const fmt = (d: Date) => d.toISOString().slice(0, 10) // YYYY-MM-DD
+  const fmt = (d: Date) => d.toISOString().slice(0, 10)
   const today = new Date()
   const endDate = fmt(today)
 
@@ -67,11 +71,27 @@ function getDateRange(range: 'today' | 'week' | 'month'): { startDate: string; e
 // ── Store ────────────────────────────────────────────────────────────────────
 
 export const useStatsStore = defineStore('stats', {
-  state: (): StatsState => ({
+  state: (): {
+    totalTokens: number
+    totalPromptTokens: number
+    totalCompletionTokens: number
+    totalCost: number      // 总费用（元，含所有模型）
+    backupCost: number     // deepseek-backup 费用（元）
+    totalCostRMB: number   // 全部模型按 0.15元/M 计算的总费用
+    dailyStats: DailyStats[]
+    modelStats: ModelStats[]
+    modelList: string[]
+    timeRange: 'today' | 'week' | 'month'
+    selectedModel: string
+    loading: boolean
+    error: string | null
+  } => ({
     totalTokens: 0,
     totalPromptTokens: 0,
     totalCompletionTokens: 0,
     totalCost: 0,
+    backupCost: 0,
+    totalCostRMB: 0,
     dailyStats: [],
     modelStats: [],
     modelList: [],
@@ -95,27 +115,26 @@ export const useStatsStore = defineStore('stats', {
       try {
         // 并行请求 summary + daily + models
         const [summaryRes, dailyRes, modelsRes] = await Promise.all([
-          request<StatsSummary>({
-            url: `/tokens/summary`,
-            data: { startDate, endDate },
-          }),
-          request<{ data: DailyStats[] }>({
-            url: `/tokens/daily`,
-            data: { startDate, endDate },
-          }),
-          request<{ models: string[] }>({
-            url: `/tokens/models`,
-          }),
+          request<StatsSummary>({ url: `/tokens/summary`, data: { startDate, endDate } }),
+          request<{ data: DailyStats[] }>({ url: `/tokens/daily`, data: { startDate, endDate } }),
+          request<{ models: string[] }>({ url: `/tokens/models` }),
         ])
 
-        // 更新状态
+        // 基础数据
         this.totalTokens = summaryRes.totalTokens
         this.totalPromptTokens = summaryRes.totalPromptTokens
         this.totalCompletionTokens = summaryRes.totalCompletionTokens
         this.totalCost = summaryRes.totalCost
-        this.modelStats = summaryRes.modelDistribution
-        this.dailyStats = dailyRes.data
-        this.modelList = modelsRes.models.filter(Boolean) // 过滤空字符串
+        this.modelStats = summaryRes.modelDistribution || []
+        this.dailyStats = dailyRes?.data || []
+        this.modelList = (modelsRes?.models || []).filter(Boolean)
+
+        // 计算费用（元）
+        this.totalCostRMB = (this.totalTokens / 1_000_000) * PRICE_RMB_PER_M_TOKEN
+        this.backupCost = calcModelCost(
+          this.modelStats.find(m => m.model === 'deepseek-backup')?.tokens || 0,
+          'deepseek-backup'
+        )
       } catch (err: any) {
         console.error('[stats] fetchStats failed:', err)
         this.error = err?.message || '加载失败'
@@ -138,7 +157,7 @@ export const useStatsStore = defineStore('stats', {
 
     setSelectedModel(model: string) {
       this.selectedModel = model
-      // TODO: 按模型筛选统计（需要后端支持 model 参数）
+      // TODO: 按模型筛选统计
     },
   },
 })
