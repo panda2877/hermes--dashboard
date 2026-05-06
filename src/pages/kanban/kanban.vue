@@ -14,6 +14,9 @@
           {{ tab.label }}
         </view>
       </view>
+      <view class="nav-refresh" @click="kanban.refresh()">
+        <text class="refresh-icon" :class="{ spinning: kanban.loading }">↻</text>
+      </view>
     </view>
 
     <!-- 加载中 / 错误 -->
@@ -259,6 +262,8 @@ function cleanTitle(title: string): string {
 }
 
 .nav-bar {
+  display: flex;
+  align-items: center;
   margin-bottom: 16px;
 }
 
@@ -266,16 +271,46 @@ function cleanTitle(title: string): string {
   font-size: 22px;
   font-weight: 700;
   color: #f7f8f8;
-  margin-bottom: 12px;
 }
 
 .nav-tabs {
+  flex: 1;
   display: flex;
   gap: 4px;
   background: #0f1011;
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 8px;
   padding: 4px;
+  margin-left: 12px;
+}
+
+.nav-refresh {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #0f1011;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  cursor: pointer;
+  margin-left: 12px;
+
+  .refresh-icon {
+    font-size: 18px;
+    color: #8a8f98;
+    display: inline-block;
+
+    &.spinning {
+      animation: spin 1s linear infinite;
+      color: #3b82f6;
+    }
+  }
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 
 .nav-tab {
@@ -524,11 +559,14 @@ function cleanTitle(title: string): string {
   justify-content: space-between;
   align-items: center;
   gap: 4px;
+  flex-wrap: wrap;
+}
 
-  @media (max-width: 380px) {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 3px;
+// 移动端（宽度 ≤ 640px）：三列看板每列很窄，项目名和负责人分行显示
+@media (max-width: 640px) {
+  .task-project,
+  .task-assignee {
+    width: 100%;
   }
 }
 
