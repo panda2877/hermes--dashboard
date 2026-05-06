@@ -1,6 +1,9 @@
 /**
  * PostgreSQL 查询服务 — LiteLLM 用量数据
  * 连接池：pg.Pool
+ *
+ * 注意：所有日期参数均被视为北京时间（Asia/Shanghai）。
+ * 使用 AT TIME ZONE 'Asia/Shanghai' 对 UTC 时间戳列做投影，转换为北京时间日期用于过滤和分组。
  */
 
 const { Pool } = require('pg')
@@ -8,9 +11,6 @@ const config = require('../config')
 
 let pool = null
 
-/**
- * 获取连接池（单例）
- */
 function getPool() {
   if (!pool) {
     pool = new Pool(config.postgres)
@@ -21,9 +21,6 @@ function getPool() {
   return pool
 }
 
-/**
- * 关闭连接池
- */
 async function closePool() {
   if (pool) {
     await pool.end()
@@ -31,12 +28,6 @@ async function closePool() {
   }
 }
 
-/**
- * 查询封装
- * @param {string} text - SQL 语句
- * @param {any[]} params - 参数数组
- * @returns {Promise<any[]>}
- */
 async function query(text, params = []) {
   const client = await getPool().connect()
   try {
@@ -47,55 +38,79 @@ async function query(text, params = []) {
   }
 }
 
+// ── 日期转 UTC 辅助 ──────────────────────────────────────────────────────────
+
+/**
+ * 将北京时间日期字符串（YYYY-MM-DD）转为对应当天 00:00:00 北京时间，
+ * 即 UTC 00:00:00 - 8h = 前一天 16:00:00 UTC。
+ * 用于 WHERE 条件左边界（>=）。
+ * 例如：'2026-05-07' → TIMESTAMPTZ '2026-05-06T16:00:00Z'
+ */
+function bjDayStart(dateStr) {
+  // 'Asia/Shanghai' AT TIME ZONE：对 naive timestamp（midnight），当作 Asia/Shanghai 本地时间，
+  // 输出对应的 UTC timestamptz（凌晨北京时间 = 前一天 UTC 下午）
+  return `('${dateStr}'::date)::timestamp AT TIME ZONE 'Asia/Shanghai'`
+}
+
+/**
+ * 将北京时间日期字符串（YYYY-MM-DD）转为对应次日 00:00:00 北京时间。
+ * 用于 WHERE 条件右边界（<，区间右开）。
+ * 例如：'2026-05-07' → TIMESTAMPTZ '2026-05-07T16:00:00Z'
+ */
+function bjDayEnd(dateStr) {
+  return `(('${dateStr}'::date + INTERVAL '1 day')::timestamp AT TIME ZONE 'Asia/Shanghai')`
+}
+
 // ── Token 用量查询 ──────────────────────────────────────────────────────────
 
 /**
  * 按模型分组统计
- * @param {string} startDate - YYYY-MM-DD
- * @param {string} endDate   - YYYY-MM-DD
+ * @param {string} startDate - YYYY-MM-DD（北京时间）
+ * @param {string} endDate   - YYYY-MM-DD（北京时间）
  */
 async function getTokensByModel(startDate, endDate) {
   return query(
     `SELECT
        model_group,
-       SUM(prompt_tokens)     AS prompt_tokens,
+       SUM(prompt_tokens)      AS prompt_tokens,
        SUM(completion_tokens) AS completion_tokens,
        SUM(total_tokens)      AS total_tokens,
        SUM(spend)             AS cost
      FROM "LiteLLM_SpendLogs"
-     WHERE "startTime" >= $1::timestamp
-       AND "startTime" <  $2::timestamp
+     WHERE "startTime" >= ${bjDayStart(startDate)}
+       AND "startTime" <  ${bjDayEnd(endDate)}
      GROUP BY model_group
      ORDER BY total_tokens DESC`,
-    [`${startDate} 00:00:00`, `${endDate} 23:59:59`]
   )
 }
 
 /**
  * 按日聚合趋势
- * @param {string} startDate - YYYY-MM-DD
- * @param {string} endDate   - YYYY-MM-DD
+ * @param {string} startDate - YYYY-MM-DD（北京时间）
+ * @param {string} endDate   - YYYY-MM-DD（北京时间）
  * @param {string} [model]   - 可选，按模型名过滤
  */
 async function getTokensDaily(startDate, endDate, model) {
   const where = model
-    ? `WHERE "startTime" >= $1::timestamp AND "startTime" < $2::timestamp AND model_group = $3`
-    : `WHERE "startTime" >= $1::timestamp AND "startTime" < $2::timestamp`
-  const params = model
-    ? [`${startDate} 00:00:00`, `${endDate} 23:59:59`, model]
-    : [`${startDate} 00:00:00`, `${endDate} 23:59:59`]
+    ? `WHERE "startTime" >= ${bjDayStart(startDate)}
+         AND "startTime" <  ${bjDayEnd(endDate)}
+         AND model_group = $1`
+    : `WHERE "startTime" >= ${bjDayStart(startDate)}
+         AND "startTime" <  ${bjDayEnd(endDate)}`
+  const params = model ? [model] : []
+
   return query(
     `SELECT
-       DATE("startTime")         AS day,
+       TO_CHAR("startTime" AT TIME ZONE 'Asia/Shanghai', 'YYYY-MM-DD') AS day,
        SUM(prompt_tokens)     AS prompt_tokens,
        SUM(completion_tokens) AS completion_tokens,
        SUM(total_tokens)      AS total_tokens,
        SUM(spend)             AS cost
      FROM "LiteLLM_SpendLogs"
      ${where}
-     GROUP BY DATE("startTime")
+     GROUP BY day
      ORDER BY day`,
-    params
+    params,
   )
 }
 
@@ -106,25 +121,23 @@ async function getTokensSummary(startDate, endDate) {
   const [totals, distribution] = await Promise.all([
     query(
       `SELECT
-         COALESCE(SUM(total_tokens), 0)      AS total_tokens,
-         COALESCE(SUM(prompt_tokens), 0)     AS prompt_tokens,
-         COALESCE(SUM(completion_tokens), 0) AS completion_tokens,
-         COALESCE(SUM(spend), 0)            AS total_cost
+         COALESCE(SUM(total_tokens), 0)       AS total_tokens,
+         COALESCE(SUM(prompt_tokens), 0)       AS prompt_tokens,
+         COALESCE(SUM(completion_tokens), 0)   AS completion_tokens,
+         COALESCE(SUM(spend), 0)               AS total_cost
        FROM "LiteLLM_SpendLogs"
-       WHERE "startTime" >= $1::timestamp
-         AND "startTime" <  $2::timestamp`,
-      [`${startDate} 00:00:00`, `${endDate} 23:59:59`]
+       WHERE "startTime" >= ${bjDayStart(startDate)}
+         AND "startTime" <  ${bjDayEnd(endDate)}`,
     ),
     query(
       `SELECT
          model_group,
          SUM(total_tokens) AS tokens
        FROM "LiteLLM_SpendLogs"
-       WHERE "startTime" >= $1::timestamp
-         AND "startTime" <  $2::timestamp
+       WHERE "startTime" >= ${bjDayStart(startDate)}
+         AND "startTime" <  ${bjDayEnd(endDate)}
        GROUP BY model_group
        ORDER BY tokens DESC`,
-      [`${startDate} 00:00:00`, `${endDate} 23:59:59`]
     ),
   ])
 
@@ -150,7 +163,7 @@ async function getModelList() {
   return query(
     `SELECT DISTINCT model_group
      FROM "LiteLLM_SpendLogs"
-     ORDER BY model_group`
+     ORDER BY model_group`,
   )
 }
 

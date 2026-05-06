@@ -45,12 +45,16 @@ function calcModelCost(tokens: number, model: string): number {
   return (tokens / 1_000_000) * price
 }
 
-// ── 日期范围辅助 ─────────────────────────────────────────────────────────────
+// ── 日期范围辅助（北京时间）──────────────────────────────────────────────────
+
+/** 格式化日期为 YYYY-MM-DD（北京时间） */
+function fmtBJ(d: Date): string {
+  return d.toLocaleDateString('en-CA', { timeZone: 'Asia/Shanghai' })
+}
 
 function getDateRange(range: 'today' | 'week' | 'month'): { startDate: string; endDate: string } {
-  const fmt = (d: Date) => d.toISOString().slice(0, 10)
   const today = new Date()
-  const endDate = fmt(today)
+  const todayBJ = fmtBJ(today)   // 北京时间今天
 
   const start = new Date(today)
   switch (range) {
@@ -65,7 +69,7 @@ function getDateRange(range: 'today' | 'week' | 'month'): { startDate: string; e
       break
   }
 
-  return { startDate: fmt(start), endDate }
+  return { startDate: fmtBJ(start), endDate: todayBJ }
 }
 
 // ── Store ────────────────────────────────────────────────────────────────────

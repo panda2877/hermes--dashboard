@@ -10,20 +10,21 @@ const postgres = require('../services/postgres')
 // ── 辅助：解析日期范围 ────────────────────────────────────────────────────────
 
 function parseDateRange(query) {
+  // 使用北京时间（Asia/Shanghai），避免 toISOString() 产生 UTC 日期导致差一天
+  const fmt = (d) => d.toLocaleDateString('en-CA', { timeZone: 'Asia/Shanghai' }) // YYYY-MM-DD
+
   const today = new Date()
-  const fmt = (d) => d.toISOString().slice(0, 10) // YYYY-MM-DD
+  const todayBJ = fmt(today) // 北京时间今天
 
   let startDate = query.startDate
   let endDate = query.endDate
 
   if (!startDate || !endDate) {
-    // 默认查最近 7 天
     const days = parseInt(query.days || '7', 10)
-    const end = new Date(today)
     const start = new Date(today)
     start.setDate(start.getDate() - days + 1)
     startDate = fmt(start)
-    endDate = fmt(end)
+    endDate = todayBJ
   }
 
   return { startDate, endDate }
@@ -53,8 +54,8 @@ router.get('/daily', async (req, res) => {
       startDate,
       endDate,
       model: model || null,
-      data: rows.map((r) => ({
-        date: r.day instanceof Date ? r.day.toISOString().slice(0, 10) : String(r.day),
+        data: rows.map((r) => ({
+          date: String(r.day),  // TO_CHAR 已返回 YYYY-MM-DD 字符串
         promptTokens: parseInt(r.prompt_tokens, 10),
         completionTokens: parseInt(r.completion_tokens, 10),
         tokens: parseInt(r.total_tokens || (r.prompt_tokens + r.completion_tokens), 10),
@@ -115,11 +116,11 @@ router.get('/logs', async (req, res) => {
          prompt_tokens, completion_tokens, spend,
          "startTime", endTime, status
        FROM "LiteLLM_SpendLogs"
-       WHERE "startTime" >= $1::timestamp
-         AND "startTime" <  $2::timestamp
+       WHERE "startTime" >= ($1::date)::timestamp AT TIME ZONE 'Asia/Shanghai'
+         AND "startTime" <  ($2::date + INTERVAL '1 day')::timestamp AT TIME ZONE 'Asia/Shanghai'
        ORDER BY "startTime" DESC
        LIMIT $3 OFFSET $4`,
-      [`${startDate} 00:00:00`, `${endDate} 23:59:59`, limit, offset]
+      [`${startDate}`, `${endDate}`, limit, offset]
     )
     res.json({ total: rows.length, limit, offset, data: rows })
   } catch (err) {
