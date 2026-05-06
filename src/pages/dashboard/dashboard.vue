@@ -55,9 +55,6 @@
       <view class="stat-card cost-card">
         <view class="stat-label">总费用</view>
         <view class="stat-value">¥{{ stats.totalCostRMB.toFixed(2) }}</view>
-        <view class="stat-sub">
-          <text class="cost-ratelabel">@ 0.15元/M tokens</text>
-        </view>
         <view v-if="stats.backupCost > 0" class="backup-cost">
           <text class="backup-label">backup: </text>
           <text class="backup-value">¥{{ stats.backupCost.toFixed(2) }}</text>
@@ -99,7 +96,12 @@
     <view v-if="!stats.loading && !stats.error" class="charts-row">
       <!-- Token 趋势柱状图（带悬停提示） -->
       <view class="chart-card">
-        <view class="chart-title">Token 趋势</view>
+        <view class="chart-title">
+          Token 趋势
+          <text v-if="stats.selectedModel" class="chart-model-tag">
+            {{ stats.selectedModel }}
+          </text>
+        </view>
         <view class="bar-chart-wrap">
           <view class="bar-chart">
             <view
@@ -459,6 +461,17 @@ function switchTab(key: string) {
   font-weight: 600;
   color: #d0d6e0;
   margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.chart-model-tag {
+  font-size: 11px;
+  background: rgba(94, 106, 210, 0.2);
+  color: #8b8eff;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-weight: 400;
 }
 
 // ── 柱状图 ──────────────────────────────────────────────────────────────────

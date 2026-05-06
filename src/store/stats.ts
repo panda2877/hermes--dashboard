@@ -125,10 +125,13 @@ export const useStatsStore = defineStore('stats', {
       const prevEndDate = fmt(prevEnd)
 
       try {
-        // 并行请求：当前周期 summary + daily + models + 上一周期 summary
+        // 并行请求：当前周期 summary + daily(+model) + models + 上一周期 summary
         const [summaryRes, dailyRes, modelsRes, prevSummaryRes] = await Promise.all([
           request<StatsSummary>({ url: `/tokens/summary`, data: { startDate, endDate } }),
-          request<{ data: DailyStats[] }>({ url: `/tokens/daily`, data: { startDate, endDate } }),
+          request<{ data: DailyStats[] }>({
+            url: `/tokens/daily`,
+            data: { startDate, endDate, ...(this.selectedModel ? { model: this.selectedModel } : {}) },
+          }),
           request<{ models: string[] }>({ url: `/tokens/models` }),
           request<StatsSummary>({ url: `/tokens/summary`, data: { startDate: prevStartDate, endDate: prevEndDate } }),
         ])

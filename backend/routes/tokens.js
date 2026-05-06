@@ -47,10 +47,12 @@ router.get('/summary', async (req, res) => {
 router.get('/daily', async (req, res) => {
   try {
     const { startDate, endDate } = parseDateRange(req.query)
-    const rows = await postgres.getTokensDaily(startDate, endDate)
+    const model = req.query.model || undefined
+    const rows = await postgres.getTokensDaily(startDate, endDate, model)
     res.json({
       startDate,
       endDate,
+      model: model || null,
       data: rows.map((r) => ({
         date: r.day instanceof Date ? r.day.toISOString().slice(0, 10) : String(r.day),
         promptTokens: parseInt(r.prompt_tokens, 10),

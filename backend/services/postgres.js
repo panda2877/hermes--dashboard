@@ -73,8 +73,17 @@ async function getTokensByModel(startDate, endDate) {
 
 /**
  * 按日聚合趋势
+ * @param {string} startDate - YYYY-MM-DD
+ * @param {string} endDate   - YYYY-MM-DD
+ * @param {string} [model]   - 可选，按模型名过滤
  */
-async function getTokensDaily(startDate, endDate) {
+async function getTokensDaily(startDate, endDate, model) {
+  const where = model
+    ? `WHERE "startTime" >= $1::timestamp AND "startTime" < $2::timestamp AND model_group = $3`
+    : `WHERE "startTime" >= $1::timestamp AND "startTime" < $2::timestamp`
+  const params = model
+    ? [`${startDate} 00:00:00`, `${endDate} 23:59:59`, model]
+    : [`${startDate} 00:00:00`, `${endDate} 23:59:59`]
   return query(
     `SELECT
        DATE("startTime")         AS day,
@@ -83,11 +92,10 @@ async function getTokensDaily(startDate, endDate) {
        SUM(total_tokens)      AS total_tokens,
        SUM(spend)             AS cost
      FROM "LiteLLM_SpendLogs"
-     WHERE "startTime" >= $1::timestamp
-       AND "startTime" <  $2::timestamp
+     ${where}
      GROUP BY DATE("startTime")
      ORDER BY day`,
-    [`${startDate} 00:00:00`, `${endDate} 23:59:59`]
+    params
   )
 }
 
