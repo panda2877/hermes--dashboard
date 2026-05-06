@@ -65,7 +65,7 @@
           @change="onAssigneeChange"
         >
           <view class="picker-trigger">
-            <text class="picker-text">{{ kanban.filter.assignee || '全部负责人' }}</text>
+            <text class="picker-text">{{ assigneeZh(kanban.filter.assignee) || '全部负责人' }}</text>
             <text class="picker-arrow">▼</text>
           </view>
         </picker>
@@ -103,7 +103,7 @@
               <text class="task-title">{{ cleanTitle(task.title) }}</text>
               <view class="task-footer">
                 <text class="task-project" v-if="task.project">{{ task.project }}</text>
-                <text class="task-assignee" v-if="task.assignee">{{ task.assignee }}</text>
+                <text class="task-assignee" v-if="task.assigneeZh">{{ task.assigneeZh }}</text>
               </view>
             </view>
 
@@ -176,17 +176,11 @@ const columns = computed(() => [
 
 // ── 筛选 ─────────────────────────────────────────────────────────────────────
 
-// 从现有任务中提取项目/负责人列表（去重）
+// 从任务数据中提取项目列表（去重）
 const projectOptions = computed(() => {
   const all = [...kanban.backlog, ...kanban.inProgress, ...kanban.done]
   const set = new Set(all.map(t => t.project).filter(Boolean))
   return ['全部项目', ...Array.from(set)]
-})
-
-const assigneeOptions = computed(() => {
-  const all = [...kanban.backlog, ...kanban.inProgress, ...kanban.done]
-  const set = new Set(all.map(t => t.assignee).filter(Boolean))
-  return ['全部负责人', ...Array.from(set)]
 })
 
 const projectIndex = computed(() => {
@@ -194,19 +188,9 @@ const projectIndex = computed(() => {
   return projectOptions.value.indexOf(kanban.filter.project)
 })
 
-const assigneeIndex = computed(() => {
-  if (!kanban.filter.assignee) return 0
-  return assigneeOptions.value.indexOf(kanban.filter.assignee)
-})
-
 function onProjectChange(e: any) {
   const idx = e.detail.value
   kanban.setFilter({ project: idx > 0 ? projectOptions.value[idx] : '' })
-}
-
-function onAssigneeChange(e: any) {
-  const idx = e.detail.value
-  kanban.setFilter({ assignee: idx > 0 ? assigneeOptions.value[idx] : '' })
 }
 
 // ── 拖拽 ─────────────────────────────────────────────────────────────────────
@@ -223,13 +207,45 @@ function onDrop(targetStatus: 'backlog' | 'in_progress' | 'done', _e?: any) {
 
 // ── 辅助 ─────────────────────────────────────────────────────────────────────
 
+// 负责人中英对照（与 store 保持同步）
+const ASSIGNEE_ZH: Record<string, string> = {
+  'yinyue':    '银月',
+  'xingruyin': '辛如音',
+  'ziling':    '紫灵',
+  'siyue':     '思月',
+}
+
+function assigneeZh(en: string): string {
+  if (!en) return ''
+  return en.split(',').map(s => ASSIGNEE_ZH[s.trim()] || s.trim()).join(', ')
+}
+
+const ASSIGNEE_KEYS = Object.keys(ASSIGNEE_ZH)  // ['yinyue', 'xingruyin', ...]
+
+// 负责人 picker 选项（显示中文，但索引对应 ASSIGNEE_KEYS）
+const assigneeOptions = computed(() => {
+  return ['全部负责人', ...ASSIGNEE_KEYS.map(k => ASSIGNEE_ZH[k] || k)]
+})
+
+const assigneeIndex = computed(() => {
+  if (!kanban.filter.assignee) return 0
+  const zh = assigneeZh(kanban.filter.assignee)
+  const idx = assigneeOptions.value.indexOf(zh)
+  return idx >= 0 ? idx : 0
+})
+
+function onAssigneeChange(e: any) {
+  const idx = e.detail.value
+  kanban.setFilter({ assignee: idx > 0 ? ASSIGNEE_KEYS[idx - 1] : '' })
+}
+
 function priorityType(p: string): 'error' | 'warning' | 'default' {
   if (p === 'P0') return 'error'
   if (p === 'P1') return 'warning'
   return 'default'
 }
 
-/** 去掉标题中 [P0] 这类前缀（Badge 已经单独显示） */
+/** 去掉标题中 [P0] 这类前缀（Badge 已单独显示） */
 function cleanTitle(title: string): string {
   return title.replace(/^\[P\d+\]\s*/, '')
 }
