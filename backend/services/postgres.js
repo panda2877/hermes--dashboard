@@ -85,12 +85,22 @@ async function getTokensByModel(startDate, endDate) {
 }
 
 /**
- * 按日聚合趋势
- * @param {string} startDate - YYYY-MM-DD（北京时间）
- * @param {string} endDate   - YYYY-MM-DD（北京时间）
- * @param {string} [model]   - 可选，按模型名过滤
+ * 按粒度查询 Token 趋势
+ * @param {string} startDate   - YYYY-MM-DD（北京时间）
+ * @param {string} endDate     - YYYY-MM-DD（北京时间）
+ * @param {string} granularity - '2hour' | 'daily' | 'weekly'
+ * @param {string} [model]     - 可选，按模型名过滤
  */
-async function getTokensDaily(startDate, endDate, model) {
+async function getTokensTrend(startDate, endDate, granularity, model) {
+  // 不同粒度的分组键 + 标签生成
+  const groupExpr = {
+    '2hour': `LPAD((FLOOR(EXTRACT(HOUR FROM "startTime" AT TIME ZONE 'Asia/Shanghai') / 2) * 2)::text, 2, '0') || ':00'`,
+    'daily': `TO_CHAR("startTime" AT TIME ZONE 'Asia/Shanghai', 'YYYY-MM-DD')`,
+    'weekly': `TO_CHAR("startTime" AT TIME ZONE 'Asia/Shanghai', 'IYYY-"W"IW')`,
+  }
+
+  const labelExpr = groupExpr[granularity] || groupExpr.daily
+
   const where = model
     ? `WHERE "startTime" >= ${bjDayStart(startDate)}
          AND "startTime" <  ${bjDayEnd(endDate)}
@@ -101,17 +111,22 @@ async function getTokensDaily(startDate, endDate, model) {
 
   return query(
     `SELECT
-       TO_CHAR("startTime" AT TIME ZONE 'Asia/Shanghai', 'YYYY-MM-DD') AS day,
+       ${labelExpr} AS label,
        SUM(prompt_tokens)     AS prompt_tokens,
        SUM(completion_tokens) AS completion_tokens,
        SUM(total_tokens)      AS total_tokens,
        SUM(spend)             AS cost
      FROM "LiteLLM_SpendLogs"
      ${where}
-     GROUP BY day
-     ORDER BY day`,
+     GROUP BY label
+     ORDER BY label`,
     params,
   )
+}
+
+/** 按日聚合（兼容旧接口，默认 daily 粒度） */
+async function getTokensDaily(startDate, endDate, model) {
+  return getTokensTrend(startDate, endDate, 'daily', model)
 }
 
 /**
@@ -173,6 +188,7 @@ module.exports = {
   closePool,
   getTokensByModel,
   getTokensDaily,
+  getTokensTrend,
   getTokensSummary,
   getModelList,
 }

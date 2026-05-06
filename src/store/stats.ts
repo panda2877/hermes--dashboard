@@ -3,6 +3,13 @@ import { request } from '@/utils/request'
 
 // ── 类型定义 ─────────────────────────────────────────────────────────────────
 
+export interface TrendItem {
+  label: string
+  tokens: number
+  promptTokens: number
+  completionTokens: number
+}
+
 export interface DailyStats {
   date: string
   tokens: number
@@ -72,6 +79,30 @@ function getDateRange(range: 'today' | 'week' | 'month'): { startDate: string; e
   return { startDate: fmtBJ(start), endDate: todayBJ }
 }
 
+/** 根据时间范围返回趋势图的粒度 */
+function getGranularity(range: 'today' | 'week' | 'month'): string {
+  switch (range) {
+    case 'today': return '2hour'
+    case 'week':  return 'daily'
+    case 'month': return 'weekly'
+  }
+}
+
+/** 趋势标签格式化（仅在前端美化显示） */
+function formatTrendLabel(label: string, range: 'today' | 'week' | 'month'): string {
+  if (range === 'today') {
+    // "00:00" → "00-02", "02:00" → "02-04", ...
+    const hour = label.split(':')[0]
+    return `${hour.padStart(2, '0')}-${String(parseInt(hour, 10) + 2).padStart(2, '0')}`
+  }
+  if (range === 'month') {
+    // "2026-W18" → "W18"
+    return label.replace(/^\d{4}-W/, 'W')
+  }
+  // daily: "2026-05-06" → "05-06"
+  return label.slice(5)
+}
+
 // ── Store ────────────────────────────────────────────────────────────────────
 
 export const useStatsStore = defineStore('stats', {
@@ -83,7 +114,7 @@ export const useStatsStore = defineStore('stats', {
     backupCost: number     // deepseek-backup 费用（元）
     totalCostRMB: number   // 全部模型按 0.15元/M 计算的总费用
     totalChange: number    // 增幅：当前 vs 上一周期（百分比）
-    dailyStats: DailyStats[]
+    trendStats: TrendItem[] // 趋势数据（不同粒度）
     modelStats: ModelStats[]
     modelList: string[]
     timeRange: 'today' | 'week' | 'month'
@@ -98,7 +129,7 @@ export const useStatsStore = defineStore('stats', {
     backupCost: 0,
     totalCostRMB: 0,
     totalChange: 0,
-    dailyStats: [],
+    trendStats: [],
     modelStats: [],
     modelList: [],
     timeRange: 'week',
@@ -117,6 +148,7 @@ export const useStatsStore = defineStore('stats', {
       this.error = null
 
       const { startDate, endDate } = getDateRange(this.timeRange)
+      const granularity = getGranularity(this.timeRange)
 
       // 计算上一周期的日期范围（长度相同，往前推）
       const rangeLen = this.timeRange === 'today' ? 1 : this.timeRange === 'week' ? 7 : 30
@@ -124,18 +156,17 @@ export const useStatsStore = defineStore('stats', {
       prevStart.setDate(prevStart.getDate() - rangeLen)
       const prevEnd = new Date(getDateRange(this.timeRange).startDate)
       prevEnd.setDate(prevEnd.getDate() - 1)
-      const fmt = (d: Date) => d.toISOString().slice(0, 10)
-      const prevStartDate = fmt(prevStart)
-      const prevEndDate = fmt(prevEnd)
+      const prevStartDate = fmtBJ(prevStart)
+      const prevEndDate = fmtBJ(prevEnd)
 
       try {
-        // 并行请求：当前周期 summary + daily(+model) + models + 上一周期 summary
-        const [summaryRes, dailyRes, modelsRes, prevSummaryRes] = await Promise.all([
+        // 并行请求：当前周期 summary + trend + models + 上一周期 summary
+        const trendParams: Record<string, string> = { startDate, endDate, granularity }
+        if (this.selectedModel) trendParams.model = this.selectedModel
+
+        const [summaryRes, trendRes, modelsRes, prevSummaryRes] = await Promise.all([
           request<StatsSummary>({ url: `/tokens/summary`, data: { startDate, endDate } }),
-          request<{ data: DailyStats[] }>({
-            url: `/tokens/daily`,
-            data: { startDate, endDate, ...(this.selectedModel ? { model: this.selectedModel } : {}) },
-          }),
+          request<{ data: TrendItem[] }>({ url: `/tokens/trend`, data: trendParams }),
           request<{ models: string[] }>({ url: `/tokens/models` }),
           request<StatsSummary>({ url: `/tokens/summary`, data: { startDate: prevStartDate, endDate: prevEndDate } }),
         ])
@@ -146,7 +177,10 @@ export const useStatsStore = defineStore('stats', {
         this.totalCompletionTokens = summaryRes.totalCompletionTokens
         this.totalCost = summaryRes.totalCost
         this.modelStats = summaryRes.modelDistribution || []
-        this.dailyStats = dailyRes?.data || []
+        this.trendStats = (trendRes?.data || []).map(d => ({
+          ...d,
+          label: formatTrendLabel(d.label, this.timeRange),
+        }))
         this.modelList = (modelsRes?.models || []).filter(Boolean)
 
         // 增幅：当前 vs 上一周期

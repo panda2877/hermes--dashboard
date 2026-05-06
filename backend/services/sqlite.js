@@ -61,6 +61,13 @@ function closeDb() {
 // ── 看板任务查询 ─────────────────────────────────────────────────────────────
 
 /**
+ * 规范化任务状态：将 Hermes CLI 的 in-progress（连字符）映射为 BFF 使用的 in_progress（下划线）
+ */
+function normalizeStatus(status) {
+  return status === 'in-progress' ? 'in_progress' : status
+}
+
+/**
  * 获取任务列表
  * @param {object} filters - { status?, assignee?, priority?, project? }
  */
@@ -101,10 +108,11 @@ function getTasks(filters = {}) {
 
   sql += `
     ORDER BY
-      CASE status
-        WHEN 'in_progress' THEN 0
-        WHEN 'backlog'     THEN 1
-        WHEN 'done'        THEN 2
+      CASE
+        WHEN status IN ('in_progress', 'in-progress') THEN 0
+        WHEN status = 'backlog'     THEN 1
+        WHEN status IN ('done', 'completed') THEN 2
+        ELSE 3
       END,
       CASE priority
         WHEN 'P0' THEN 0
@@ -114,7 +122,10 @@ function getTasks(filters = {}) {
       created_at DESC
   `
 
-  return query(sql, params)
+  return query(sql, params).map((t) => ({
+    ...t,
+    status: normalizeStatus(t.status),
+  }))
 }
 
 /**
@@ -131,6 +142,9 @@ function getTaskById(id) {
      FROM tasks WHERE id = ?`,
     [id]
   )
+  if (rows[0]) {
+    rows[0].status = normalizeStatus(rows[0].status)
+  }
   return rows[0] || null
 }
 
@@ -141,7 +155,7 @@ function updateTaskStatus(id, status) {
   const now = new Date().toISOString()
   let sql, params
 
-  if (status === 'done') {
+  if (status === 'done' || status === 'completed') {
     sql = `UPDATE tasks SET status = ?, completed_at = ? WHERE id = ?`
     params = [status, now, id]
   } else {
@@ -150,18 +164,25 @@ function updateTaskStatus(id, status) {
   }
 
   const result = query(sql, params)
-  return result.length >= 0 // sql.js UPDATE 不返回 changes 计数，手动返回
+  return result.length >= 0
 }
 
 /**
  * 看板统计
  */
 function getKanbanStats() {
-  return query(`
+  const rows = query(`
     SELECT status, COUNT(*) AS count
     FROM tasks
     GROUP BY status
   `)
+  // 合并 in_progress + in-progress
+  const merged = {}
+  for (const row of rows) {
+    const key = normalizeStatus(row.status)
+    merged[key] = (merged[key] || 0) + parseInt(row.count, 10)
+  }
+  return Object.entries(merged).map(([status, count]) => ({ status, count }))
 }
 
 module.exports = {

@@ -25,6 +25,7 @@ export interface KanbanStats {
 }
 
 interface KanbanState {
+  allTasks: TaskItem[]       // 原始全量任务（未筛选），供 picker 选项使用
   backlog: TaskItem[]
   inProgress: TaskItem[]
   done: TaskItem[]
@@ -65,6 +66,7 @@ function shortProject(path: string): string {
 
 export const useKanbanStore = defineStore('kanban', {
   state: (): KanbanState => ({
+    allTasks: [],
     backlog: [],
     inProgress: [],
     done: [],
@@ -116,6 +118,9 @@ export const useKanbanStore = defineStore('kanban', {
             completedAt: t.completed_at,
           }
         })
+
+        // 保存全量（未筛选），供 picker 选项使用
+        this.allTasks = allTasks
 
         // 本地 project 筛选
         const filtered = this.filter.project

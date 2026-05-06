@@ -176,9 +176,9 @@ const columns = computed(() => [
 
 // ── 筛选 ─────────────────────────────────────────────────────────────────────
 
-// 从任务数据中提取项目列表（去重）
+// 从全量任务数据中提取项目列表（去重）—— 不依赖已筛选数据，避免筛选后选项消失
 const projectOptions = computed(() => {
-  const all = [...kanban.backlog, ...kanban.inProgress, ...kanban.done]
+  const all = kanban.allTasks
   const set = new Set(all.map(t => t.project).filter(Boolean))
   return ['全部项目', ...Array.from(set)]
 })

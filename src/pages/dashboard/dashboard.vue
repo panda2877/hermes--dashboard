@@ -97,7 +97,7 @@
       <!-- Token 趋势柱状图（带悬停提示） -->
       <view class="chart-card">
         <view class="chart-title">
-          Token 趋势
+          {{ trendChartTitle }}
           <text v-if="stats.selectedModel" class="chart-model-tag">
             {{ stats.selectedModel }}
           </text>
@@ -105,7 +105,7 @@
         <view class="bar-chart-wrap">
           <view class="bar-chart">
             <view
-              v-for="(item, i) in stats.dailyStats"
+              v-for="(item, i) in stats.trendStats"
               :key="i"
               class="bar-item"
               @touchstart="hoveredBar = i"
@@ -115,7 +115,7 @@
             >
               <!-- 悬停提示 -->
               <view v-if="hoveredBar === i" class="bar-tooltip">
-                <text class="tooltip-date">{{ item.date }}</text>
+                <text class="tooltip-date">{{ item.label }}</text>
                 <text class="tooltip-tokens">{{ formatNum(item.tokens) }} tokens</text>
                 <text class="tooltip-prompt">P: {{ formatNum(item.promptTokens) }}</text>
                 <text class="tooltip-completion">C: {{ formatNum(item.completionTokens) }}</text>
@@ -127,7 +127,7 @@
                   opacity: hoveredBar === -1 || hoveredBar === i ? 1 : 0.4,
                 }"
               />
-              <text class="bar-label">{{ item.date.slice(5) }}</text>
+              <text class="bar-label">{{ item.label }}</text>
             </view>
           </view>
         </view>
@@ -197,6 +197,15 @@ const selectedIndex = computed(() => {
 // picker 列表：第一个是"全部模型"，后面接真实模型
 const modelPickerList = computed(() => ['全部模型', ...stats.modelList])
 
+// 趋势图标题随粒度变化
+const trendChartTitle = computed(() => {
+  switch (stats.timeRange) {
+    case 'today': return 'Token 趋势（2小时粒度）'
+    case 'week':  return 'Token 趋势（每日）'
+    case 'month': return 'Token 趋势（每周）'
+  }
+})
+
 // 饼图扇形（SVG stroke-dasharray 实现）
 const pieSegments = computed(() => {
   const total = stats.modelStats.reduce((s, m) => s + m.tokens, 0)
@@ -231,7 +240,7 @@ const tabs = [
 ]
 
 const timeOptions = [
-  { key: 'today', label: '今天' },
+  { key: 'today', label: '本日' },
   { key: 'week', label: '本周' },
   { key: 'month', label: '本月' },
 ]
@@ -246,7 +255,7 @@ function formatNum(n: number): string {
 
 function barHeight(val: number): number {
   if (!val) return 4
-  const max = Math.max(...stats.dailyStats.map(d => d.tokens), 1)
+  const max = Math.max(...stats.trendStats.map(d => d.tokens), 1)
   return Math.max((val / max) * 160, 4)
 }
 
@@ -498,107 +507,94 @@ function switchTab(key: string) {
 .bar {
   width: 100%;
   max-width: 32px;
-  background: linear-gradient(180deg, #5e6ad2 0%, #7170ff 100%);
+  background: linear-gradient(180deg, #5e6ad2 0%, #434a9a 100%);
   border-radius: 4px 4px 0 0;
   min-height: 4px;
-  transition: opacity 0.2s, height 0.3s;
-  cursor: pointer;
+  transition: opacity 0.15s;
 }
 .bar-label {
   font-size: 10px;
-  color: #8a8f98;
+  color: #62666d;
+  text-align: center;
+  white-space: nowrap;
 }
-
-// 悬停气泡
 .bar-tooltip {
   position: absolute;
-  bottom: calc(100% + 8px);
+  bottom: 100%;
   left: 50%;
   transform: translateX(-50%);
-  background: #1a1b1f;
-  border: 1px solid rgba(94, 106, 210, 0.4);
+  background: #1a1b1e;
+  border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 6px;
-  padding: 8px 10px;
-  white-space: nowrap;
-  z-index: 10;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  padding: 6px 10px;
   display: flex;
   flex-direction: column;
   gap: 2px;
-  pointer-events: none;
-  &::after {
-    content: '';
-    position: absolute;
-    top: 100%;
-    left: 50%;
-    transform: translateX(-50%);
-    border: 5px solid transparent;
-    border-top-color: rgba(94, 106, 210, 0.4);
-  }
+  z-index: 10;
+  white-space: nowrap;
+  font-size: 11px;
+  font-family: 'JetBrains Mono', monospace;
 }
-.tooltip-date { font-size: 11px; color: #8a8f98; }
-.tooltip-tokens { font-size: 13px; color: #f7f8f8; font-weight: 600; }
-.tooltip-prompt { font-size: 11px; color: #5e6ad2; }
-.tooltip-completion { font-size: 11px; color: #22c55e; }
+.tooltip-date { color: #d0d6e0; font-weight: 600; }
+.tooltip-tokens { color: #f7f8f8; }
+.tooltip-prompt { color: #8a8f98; }
+.tooltip-completion { color: #8a8f98; }
 
 // ── 饼图 ────────────────────────────────────────────────────────────────────
 .pie-wrap {
   display: flex;
-  flex-direction: column;
   align-items: center;
   gap: 16px;
 }
 .pie-svg {
-  width: 140px;
-  height: 140px;
+  width: 120px;
+  height: 120px;
+  flex-shrink: 0;
 }
 .pie-svg-el {
+  width: 100%;
+  height: 100%;
   transform: rotate(-90deg);
-  overflow: visible;
 }
 .pie-seg {
-  transition: opacity 0.2s;
+  transition: stroke-dasharray 0.3s, stroke-dashoffset 0.3s;
 }
-
 .pie-legend {
-  width: 100%;
+  flex: 1;
+  min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 8px;
 }
 .pie-row {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 4px;
-  border-radius: 4px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  gap: 6px;
 }
 .pie-dot {
-  width: 10px;
-  height: 10px;
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
   flex-shrink: 0;
 }
 .pie-label {
-  flex: 1;
   font-size: 12px;
   color: #d0d6e0;
+  flex: 1;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 .pie-tokens {
-  font-size: 12px;
-  color: #f7f8f8;
+  font-size: 11px;
+  color: #8a8f98;
   font-family: 'JetBrains Mono', monospace;
-  min-width: 60px;
-  text-align: right;
 }
 .pie-pct {
-  font-size: 12px;
-  color: #8a8f98;
-  min-width: 40px;
+  font-size: 11px;
+  color: #62666d;
+  width: 36px;
   text-align: right;
+  font-family: 'JetBrains Mono', monospace;
 }
 </style>

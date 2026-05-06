@@ -129,4 +129,31 @@ router.get('/logs', async (req, res) => {
   }
 })
 
+// ── GET /api/tokens/trend ──────────────────────────────────────────────────
+
+router.get('/trend', async (req, res) => {
+  try {
+    const { startDate, endDate } = parseDateRange(req.query)
+    const granularity = req.query.granularity || 'daily'
+    const model = req.query.model || undefined
+    const rows = await postgres.getTokensTrend(startDate, endDate, granularity, model)
+    res.json({
+      startDate,
+      endDate,
+      granularity,
+      model: model || null,
+      data: rows.map((r) => ({
+        label: String(r.label),
+        promptTokens: parseInt(r.prompt_tokens, 10),
+        completionTokens: parseInt(r.completion_tokens, 10),
+        tokens: parseInt(r.total_tokens || (r.prompt_tokens + r.completion_tokens), 10),
+        cost: parseFloat(r.cost || 0),
+      })),
+    })
+  } catch (err) {
+    console.error('[tokens/trend]', err)
+    res.status(500).json({ error: '查询失败', detail: err.message })
+  }
+})
+
 module.exports = router
