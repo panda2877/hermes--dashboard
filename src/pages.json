@@ -53,20 +53,20 @@
       {
         "pagePath": "pages/dashboard/dashboard",
         "text": "统计",
-        "iconPath": "static/icons/dashboard.png",
-        "selectedIconPath": "static/icons/dashboard-active.png"
+        "iconPath": "static/icons/dashboard.svg",
+        "selectedIconPath": "static/icons/dashboard-active.svg"
       },
       {
         "pagePath": "pages/kanban/kanban",
         "text": "任务",
-        "iconPath": "static/icons/kanban.png",
-        "selectedIconPath": "static/icons/kanban-active.png"
+        "iconPath": "static/icons/kanban.svg",
+        "selectedIconPath": "static/icons/kanban-active.svg"
       },
       {
         "pagePath": "pages/agents/agents",
         "text": "Agent",
-        "iconPath": "static/icons/agents.png",
-        "selectedIconPath": "static/icons/agents-active.png"
+        "iconPath": "static/icons/agents.svg",
+        "selectedIconPath": "static/icons/agents-active.svg"
       }
     ]
   }
