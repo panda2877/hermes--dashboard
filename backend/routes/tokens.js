@@ -55,7 +55,7 @@ router.get('/daily', async (req, res) => {
       endDate,
       model: model || null,
         data: rows.map((r) => ({
-          date: String(r.day),  // TO_CHAR 已返回 YYYY-MM-DD 字符串
+          date: String(r.day || r.label),  // 兼容 day/label 字段名
         promptTokens: parseInt(r.prompt_tokens, 10),
         completionTokens: parseInt(r.completion_tokens, 10),
         tokens: parseInt(r.total_tokens || (r.prompt_tokens + r.completion_tokens), 10),
@@ -110,19 +110,37 @@ router.get('/logs', async (req, res) => {
     const { startDate, endDate } = parseDateRange(req.query)
     const limit = Math.min(parseInt(req.query.limit || '100', 10), 500)
     const offset = parseInt(req.query.offset || '0', 10)
-    const rows = await postgres.query(
-      `SELECT
-         id, model_group, user, total_tokens,
-         prompt_tokens, completion_tokens, spend,
-         "startTime", endTime, status
-       FROM "LiteLLM_SpendLogs"
-       WHERE "startTime" >= ($1::date)::timestamp AT TIME ZONE 'Asia/Shanghai'
-         AND "startTime" <  ($2::date + INTERVAL '1 day')::timestamp AT TIME ZONE 'Asia/Shanghai'
-       ORDER BY "startTime" DESC
-       LIMIT $3 OFFSET $4`,
-      [`${startDate}`, `${endDate}`, limit, offset]
-    )
-    res.json({ total: rows.length, limit, offset, data: rows })
+
+    const whereClause = `
+       WHERE "startTime" AT TIME ZONE 'UTC' >= (($1::date)::timestamp AT TIME ZONE 'Asia/Shanghai')
+         AND "startTime" AT TIME ZONE 'UTC' <  (($2::date + INTERVAL '1 day')::timestamp AT TIME ZONE 'Asia/Shanghai')
+    `
+
+    const [countResult, rows] = await Promise.all([
+      postgres.query(
+        `SELECT COUNT(*) AS total FROM "LiteLLM_SpendLogs" ${whereClause}`,
+        [`${startDate}`, `${endDate}`],
+      ),
+      postgres.query(
+        `SELECT
+           request_id, model_group, user, total_tokens,
+           prompt_tokens, completion_tokens, spend,
+           TO_CHAR("startTime" AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Shanghai', 'YYYY-MM-DD HH24:MI:SS') AS start_time_bj,
+           "endTime", "status"
+         FROM "LiteLLM_SpendLogs"
+         ${whereClause}
+         ORDER BY "startTime" DESC
+         LIMIT $3 OFFSET $4`,
+        [`${startDate}`, `${endDate}`, limit, offset],
+      ),
+    ])
+
+    res.json({
+      total: parseInt(countResult[0]?.total || 0, 10),
+      limit,
+      offset,
+      data: rows,
+    })
   } catch (err) {
     console.error('[tokens/logs]', err)
     res.status(500).json({ error: '查询失败', detail: err.message })

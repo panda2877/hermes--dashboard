@@ -2,8 +2,10 @@
  * PostgreSQL 查询服务 — LiteLLM 用量数据
  * 连接池：pg.Pool
  *
- * 注意：所有日期参数均被视为北京时间（Asia/Shanghai）。
- * 使用 AT TIME ZONE 'Asia/Shanghai' 对 UTC 时间戳列做投影，转换为北京时间日期用于过滤和分组。
+ * 关键：LiteLLM 数据库的 startTime 列为 timestamp without time zone（naive），
+ * 存储的是 UTC 墙钟时间字符串。
+ * 所有查询必须用 "startTime" AT TIME ZONE 'UTC' 将其显式声明为 UTC，
+ * 再 AT TIME ZONE 'Asia/Shanghai' 投影为北京时间。
  */
 
 const { Pool } = require('pg')
@@ -41,25 +43,35 @@ async function query(text, params = []) {
 // ── 日期转 UTC 辅助 ──────────────────────────────────────────────────────────
 
 /**
- * 将北京时间日期字符串（YYYY-MM-DD）转为对应当天 00:00:00 北京时间，
- * 即 UTC 00:00:00 - 8h = 前一天 16:00:00 UTC。
- * 用于 WHERE 条件左边界（>=）。
+ * 将北京时间日期字符串（YYYY-MM-DD）转为 UTC TIMESTAMPTZ。
+ * 原理：北京时间 00:00 = UTC 前一天 16:00。
  * 例如：'2026-05-07' → TIMESTAMPTZ '2026-05-06T16:00:00Z'
+ *
+ * 注意：这里不做 AT TIME ZONE，直接返回 UTC timestamptz 字符串。
+ * 配合 "startTime" AT TIME ZONE 'UTC' 使用：
+ *   "startTime" AT TIME ZONE 'UTC' >= bjDayStartUTC('2026-05-07')
+ *   → 将 naive startTime 声明为 UTC，再与 bjDayStartUTC 结果（UTC timestamptz）比较。
  */
-function bjDayStart(dateStr) {
-  // 'Asia/Shanghai' AT TIME ZONE：对 naive timestamp（midnight），当作 Asia/Shanghai 本地时间，
-  // 输出对应的 UTC timestamptz（凌晨北京时间 = 前一天 UTC 下午）
-  return `('${dateStr}'::date)::timestamp AT TIME ZONE 'Asia/Shanghai'`
+function bjDayStartUTC(dateStr) {
+  return `('${dateStr}'::date + INTERVAL '0 second')::timestamp AT TIME ZONE 'Asia/Shanghai'`
 }
 
 /**
- * 将北京时间日期字符串（YYYY-MM-DD）转为对应次日 00:00:00 北京时间。
- * 用于 WHERE 条件右边界（<，区间右开）。
+ * 将北京时间日期字符串（YYYY-MM-DD）转为次日 00:00 北京时间对应的 UTC TIMESTAMPTZ。
  * 例如：'2026-05-07' → TIMESTAMPTZ '2026-05-07T16:00:00Z'
+ * 用于右开区间 < 边界。
  */
-function bjDayEnd(dateStr) {
+function bjDayEndUTC(dateStr) {
   return `(('${dateStr}'::date + INTERVAL '1 day')::timestamp AT TIME ZONE 'Asia/Shanghai')`
 }
+
+/**
+ * 获取 startTime 的 UTC 投影表达式（在 SELECT/GROUP BY 中使用）。
+ * 1. "startTime" AT TIME ZONE 'UTC' — 将 naive UTC 字符串转为 UTC timestamptz
+ * 2. AT TIME ZONE 'Asia/Shanghai' — 投影为北京时间
+ * 合起来：把数据库里的 UTC 墙钟时间 → UTC timestamptz → 北京时间
+ */
+const TZ_UTC = `"startTime" AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Shanghai'`
 
 // ── Token 用量查询 ──────────────────────────────────────────────────────────
 
@@ -77,8 +89,8 @@ async function getTokensByModel(startDate, endDate) {
        SUM(total_tokens)      AS total_tokens,
        SUM(spend)             AS cost
      FROM "LiteLLM_SpendLogs"
-     WHERE "startTime" >= ${bjDayStart(startDate)}
-       AND "startTime" <  ${bjDayEnd(endDate)}
+     WHERE "startTime" AT TIME ZONE 'UTC' >= ${bjDayStartUTC(startDate)}
+       AND "startTime" AT TIME ZONE 'UTC' <  ${bjDayEndUTC(endDate)}
      GROUP BY model_group
      ORDER BY total_tokens DESC`,
   )
@@ -92,21 +104,21 @@ async function getTokensByModel(startDate, endDate) {
  * @param {string} [model]     - 可选，按模型名过滤
  */
 async function getTokensTrend(startDate, endDate, granularity, model) {
-  // 不同粒度的分组键 + 标签生成
+  // 不同粒度的分组键 + 标签生成（基于 UTC 投影后的北京时间）
   const groupExpr = {
-    '2hour': `LPAD((FLOOR(EXTRACT(HOUR FROM "startTime" AT TIME ZONE 'Asia/Shanghai') / 2) * 2)::text, 2, '0') || ':00'`,
-    'daily': `TO_CHAR("startTime" AT TIME ZONE 'Asia/Shanghai', 'YYYY-MM-DD')`,
-    'weekly': `TO_CHAR("startTime" AT TIME ZONE 'Asia/Shanghai', 'IYYY-"W"IW')`,
+    '2hour': `LPAD((FLOOR(EXTRACT(HOUR FROM ${TZ_UTC}) / 2) * 2)::text, 2, '0') || ':00'`,
+    'daily': `TO_CHAR(${TZ_UTC}, 'YYYY-MM-DD')`,
+    'weekly': `TO_CHAR(${TZ_UTC}, 'IYYY-"W"IW')`,
   }
 
   const labelExpr = groupExpr[granularity] || groupExpr.daily
 
   const where = model
-    ? `WHERE "startTime" >= ${bjDayStart(startDate)}
-         AND "startTime" <  ${bjDayEnd(endDate)}
+    ? `WHERE "startTime" AT TIME ZONE 'UTC' >= ${bjDayStartUTC(startDate)}
+         AND "startTime" AT TIME ZONE 'UTC' <  ${bjDayEndUTC(endDate)}
          AND model_group = $1`
-    : `WHERE "startTime" >= ${bjDayStart(startDate)}
-         AND "startTime" <  ${bjDayEnd(endDate)}`
+    : `WHERE "startTime" AT TIME ZONE 'UTC' >= ${bjDayStartUTC(startDate)}
+         AND "startTime" AT TIME ZONE 'UTC' <  ${bjDayEndUTC(endDate)}`
   const params = model ? [model] : []
 
   return query(
@@ -137,20 +149,20 @@ async function getTokensSummary(startDate, endDate) {
     query(
       `SELECT
          COALESCE(SUM(total_tokens), 0)       AS total_tokens,
-         COALESCE(SUM(prompt_tokens), 0)       AS prompt_tokens,
-         COALESCE(SUM(completion_tokens), 0)   AS completion_tokens,
-         COALESCE(SUM(spend), 0)               AS total_cost
+         COALESCE(SUM(prompt_tokens), 0)      AS prompt_tokens,
+         COALESCE(SUM(completion_tokens), 0)  AS completion_tokens,
+         COALESCE(SUM(spend), 0)              AS total_cost
        FROM "LiteLLM_SpendLogs"
-       WHERE "startTime" >= ${bjDayStart(startDate)}
-         AND "startTime" <  ${bjDayEnd(endDate)}`,
+       WHERE "startTime" AT TIME ZONE 'UTC' >= ${bjDayStartUTC(startDate)}
+         AND "startTime" AT TIME ZONE 'UTC' <  ${bjDayEndUTC(endDate)}`,
     ),
     query(
       `SELECT
          model_group,
          SUM(total_tokens) AS tokens
        FROM "LiteLLM_SpendLogs"
-       WHERE "startTime" >= ${bjDayStart(startDate)}
-         AND "startTime" <  ${bjDayEnd(endDate)}
+       WHERE "startTime" AT TIME ZONE 'UTC' >= ${bjDayStartUTC(startDate)}
+         AND "startTime" AT TIME ZONE 'UTC' <  ${bjDayEndUTC(endDate)}
        GROUP BY model_group
        ORDER BY tokens DESC`,
     ),
