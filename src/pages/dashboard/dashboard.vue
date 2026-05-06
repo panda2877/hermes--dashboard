@@ -16,16 +16,25 @@
       </view>
     </view>
 
+    <!-- 加载中 / 错误 -->
+    <view v-if="stats.loading" class="loading-state">
+      <text class="loading-text">加载中...</text>
+    </view>
+    <view v-else-if="stats.error" class="error-state">
+      <text class="error-text">{{ stats.error }}</text>
+      <view class="retry-btn" @click="stats.refresh()">重试</view>
+    </view>
+
     <!-- 统计卡片 -->
-    <view class="stats-grid">
-      <StatCard label="总 Token" :value="formatNum(stats.totalTokens)" :change="8.2" />
-      <StatCard label="Prompt Token" :value="formatNum(stats.totalPromptTokens)" :change="5.7" />
-      <StatCard label="Completion Token" :value="formatNum(stats.totalCompletionTokens)" :change="10.4" />
-      <StatCard label="总费用 ($)" :value="stats.totalCost.toFixed(2)" :change="-2.1" />
+    <view v-else class="stats-grid">
+      <StatCard label="总 Token" :value="formatNum(stats.totalTokens)" :change="null" />
+      <StatCard label="Prompt Token" :value="formatNum(stats.totalPromptTokens)" :change="null" />
+      <StatCard label="Completion Token" :value="formatNum(stats.totalCompletionTokens)" :change="null" />
+      <StatCard label="总费用 ($)" :value="stats.totalCost.toFixed(4)" :change="null" />
     </view>
 
     <!-- 筛选栏 -->
-    <view class="filter-row">
+    <view v-if="!stats.loading && !stats.error" class="filter-row">
       <view class="time-buttons">
         <view
           v-for="t in timeOptions"
@@ -48,7 +57,7 @@
     </view>
 
     <!-- 图表区域 -->
-    <view class="charts-row">
+    <view v-if="!stats.loading && !stats.error" class="charts-row">
       <view class="chart-card">
         <view class="chart-title">Token 趋势</view>
         <!-- uCharts 柱状图占位 -->
@@ -87,13 +96,18 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useStatsStore } from '@/store/stats'
 import StatCard from '@/components/StatCard.vue'
 
 const stats = useStatsStore()
 const currentTab = ref('dashboard')
 const modelFilter = ref('')
+
+// 页面加载时拉取真实数据
+onMounted(() => {
+  stats.fetchStats()
+})
 
 const tabs = [
   { key: 'dashboard', label: '统计' },
@@ -147,6 +161,45 @@ function switchTab(key: string) {
   font-weight: 700;
   color: #f7f8f8;
   margin-bottom: 12px;
+}
+
+.loading-state {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 60px 0;
+}
+
+.loading-text {
+  color: #8a8f98;
+  font-size: 14px;
+}
+
+.error-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 40px 0;
+  background: #0f1011;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-radius: 8px;
+  margin-bottom: 16px;
+}
+
+.error-text {
+  color: #ef4444;
+  font-size: 13px;
+}
+
+.retry-btn {
+  padding: 6px 20px;
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  border-radius: 6px;
+  color: #ef4444;
+  font-size: 13px;
+  cursor: pointer;
 }
 
 .nav-tabs {
