@@ -1,0 +1,52 @@
+/* Linear Dark Theme 变量覆盖 */
+@import "../../uni_modules/uview-ui/theme.scss";
+
+$u-primary: #5e6ad2;
+$u-primary-dark: #4a54b8;
+$u-primary-light: #828fff;
+$u-primary-disabled: rgba(94, 106, 210, 0.4);
+
+$u-warning: #f9ae3d;
+$u-warning-dark: #f1a532;
+$u-warning-disabled: rgba(249, 174, 61, 0.4);
+$u-warning-light: #fdf6ec;
+
+$u-success: #22c55e;
+$u-success-dark: #16a34a;
+$u-success-disabled: rgba(34, 197, 94, 0.4);
+$u-success-light: #f0fff4;
+
+$u-error: #ef4444;
+$u-error-dark: #dc2626;
+$u-error-disabled: rgba(239, 68, 68, 0.4);
+$u-error-light: #fef2f2;
+
+$u-info: #8a8f98;
+$u-info-dark: #6b7280;
+$u-info-disabled: rgba(138, 143, 152, 0.4);
+$u-info-light: #f3f4f6;
+
+$u-disabled-color: rgba(255, 255, 255, 0.15);
+
+$u-bg-color: #08090a;
+$u-bg-color-page: #0f1011;
+$u-main-color: #f7f8f8;
+$u-content-color: #d0d6e0;
+$u-tips-color: #8a8f98;
+$u-light-color: #62666d;
+$u-border-color: rgba(255, 255, 255, 0.08);
+
+/* 按钮变量 */
+$u-button-border-radius: 6px;
+$u-button-info-color: #8a8f98;
+$u-button-warning-color: #f9ae3d;
+$u-button-success-color: #22c55e;
+$u-button-error-color: #ef4444;
+$u-button-info-bg: rgba(138, 143, 152, 0.15);
+$u-button-warning-bg: rgba(249, 174, 61, 0.15);
+$u-button-success-bg: rgba(34, 197, 94, 0.15);
+$u-button-error-bg: rgba(239, 68, 68, 0.15);
+
+/* 圆角 */
+$u-border-radius: 6px;
+$u-border-radius-large: 8px;

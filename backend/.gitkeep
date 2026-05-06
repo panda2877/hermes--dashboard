@@ -1,0 +1,1 @@
+# Backend API Server\n# 后端服务目录（Go/Python/Node 均可）\n\n# 以下文件由后端自行管理，不纳入前端仓库\nbackend/node_modules/\nbackend/__pycache__/\nbackend/.env\nbackend/*.log\n

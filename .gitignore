@@ -1,0 +1,30 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+unpackage/
+
+# Local env files
+.env
+.env.local
+.env.*.local
+
+# Editor directories
+.idea/
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Uni-app specific
+*.log
+*-debug.log
+*-chrome-debug.log
+.DS_Store
+
+# Lock files (optional - some teams keep these)
+# package-lock.json
+# yarn.lock

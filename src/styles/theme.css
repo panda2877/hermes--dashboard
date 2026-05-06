@@ -1,0 +1,59 @@
+/* Linear Dark Theme — 全局 CSS 变量（覆盖 uView 组件的默认样式） */
+
+/* 页面背景 */
+page, body {
+  background-color: #08090a !important;
+  color: #f7f8f8;
+}
+
+/* 全局文字颜色 */
+.u-main-color { color: #f7f8f8 !important; }
+.u-content-color { color: #d0d6e0 !important; }
+.u-tips-color { color: #8a8f98 !important; }
+.u-light-color { color: #62666d !important; }
+
+/* 全局边框颜色 */
+.u-border, .u-border-top, .u-border-bottom, .u-border-left, .u-border-right,
+.u-border-top-bottom {
+  border-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+/* 全局背景色 */
+.u-bg-color { background-color: #0f1011 !important; }
+
+/* 按钮主色 */
+.u-primary { background-color: #5e6ad2 !important; color: #fff !important; }
+.u-primary-bg { background-color: #5e6ad2 !important; }
+
+/* 输入框 */
+.u-input__inner {
+  background-color: #191a1b !important;
+  color: #f7f8f8 !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+/* 圆角 */
+.u-border-radius { border-radius: 6px !important; }
+.u-border-radius-large { border-radius: 8px !important; }
+
+/* Tab 栏背景 */
+.u-tabbar { background-color: #0f1011 !important; border-top-color: rgba(255,255,255,0.08) !important; }
+.u-tabbar-item { color: #8a8f98 !important; }
+.u-tabbar-item.u-tabbar-item--active { color: #5e6ad2 !important; }
+
+/* 下拉菜单 */
+.u-dropdown__menu { background-color: #0f1011 !important; }
+.u-dropdown__item { background-color: #0f1011 !important; color: #f7f8f8 !important; }
+
+/* 卡片 */
+.u-card { background-color: #0f1011 !important; border-color: rgba(255,255,255,0.08) !important; }
+
+/* 徽章 */
+.u-tag { border-radius: 4px !important; }
+
+/* 安全区 */
+.u-safe-area-inset-top { padding-top: constant(safe-area-inset-top) !important; padding-top: env(safe-area-inset-top) !important; }
+.u-safe-area-inset-bottom { padding-bottom: constant(safe-area-inset-bottom) !important; padding-bottom: env(safe-area-inset-bottom) !important; }
+
+/* scrollbar */
+::-webkit-scrollbar { display: none !important; }

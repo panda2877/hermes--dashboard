@@ -1,0 +1,67 @@
+{
+  "pages": [
+    {
+      "path": "pages/login/login",
+      "style": {
+        "navigationBarTitleText": "登录",
+        "navigationStyle": "custom",
+        "backgroundColor": "#08090a"
+      }
+    },
+    {
+      "path": "pages/dashboard/dashboard",
+      "style": {
+        "navigationBarTitleText": "统计看板",
+        "navigationStyle": "custom",
+        "backgroundColor": "#08090a"
+      }
+    },
+    {
+      "path": "pages/kanban/kanban",
+      "style": {
+        "navigationBarTitleText": "任务看板",
+        "navigationStyle": "custom",
+        "backgroundColor": "#08090a"
+      }
+    },
+    {
+      "path": "pages/agents/agents",
+      "style": {
+        "navigationBarTitleText": "Agent 状态",
+        "navigationStyle": "custom",
+        "backgroundColor": "#08090a"
+      }
+    }
+  ],
+  "globalStyle": {
+    "navigationBarTextStyle": "white",
+    "navigationBarBackgroundColor": "#0f1011",
+    "backgroundColor": "#08090a"
+  },
+  "tabBar": {
+    "color": "#8a8f98",
+    "selectedColor": "#5e6ad2",
+    "backgroundColor": "#0f1011",
+    "borderStyle": "black",
+    "list": [
+      {
+        "pagePath": "pages/dashboard/dashboard",
+        "text": "统计",
+        "iconPath": "static/icons/dashboard.png",
+        "selectedIconPath": "static/icons/dashboard-active.png"
+      },
+      {
+        "pagePath": "pages/kanban/kanban",
+        "text": "任务",
+        "iconPath": "static/icons/kanban.png",
+        "selectedIconPath": "static/icons/kanban-active.png"
+      },
+      {
+        "pagePath": "pages/agents/agents",
+        "text": "Agent",
+        "iconPath": "static/icons/agents.png",
+        "selectedIconPath": "static/icons/agents-active.png"
+      }
+    ]
+  }
+}
