@@ -75,9 +75,10 @@ export const useStatsStore = defineStore('stats', {
     totalTokens: number
     totalPromptTokens: number
     totalCompletionTokens: number
-    totalCost: number      // 总费用（元，含所有模型）
+    totalCost: number      // 总费用（$，来自 LiteLLM）
     backupCost: number     // deepseek-backup 费用（元）
     totalCostRMB: number   // 全部模型按 0.15元/M 计算的总费用
+    totalChange: number    // 增幅：当前 vs 上一周期（百分比）
     dailyStats: DailyStats[]
     modelStats: ModelStats[]
     modelList: string[]
@@ -92,6 +93,7 @@ export const useStatsStore = defineStore('stats', {
     totalCost: 0,
     backupCost: 0,
     totalCostRMB: 0,
+    totalChange: 0,
     dailyStats: [],
     modelStats: [],
     modelList: [],
@@ -112,12 +114,23 @@ export const useStatsStore = defineStore('stats', {
 
       const { startDate, endDate } = getDateRange(this.timeRange)
 
+      // 计算上一周期的日期范围（长度相同，往前推）
+      const rangeLen = this.timeRange === 'today' ? 1 : this.timeRange === 'week' ? 7 : 30
+      const prevStart = new Date(getDateRange(this.timeRange).startDate)
+      prevStart.setDate(prevStart.getDate() - rangeLen)
+      const prevEnd = new Date(getDateRange(this.timeRange).startDate)
+      prevEnd.setDate(prevEnd.getDate() - 1)
+      const fmt = (d: Date) => d.toISOString().slice(0, 10)
+      const prevStartDate = fmt(prevStart)
+      const prevEndDate = fmt(prevEnd)
+
       try {
-        // 并行请求 summary + daily + models
-        const [summaryRes, dailyRes, modelsRes] = await Promise.all([
+        // 并行请求：当前周期 summary + daily + models + 上一周期 summary
+        const [summaryRes, dailyRes, modelsRes, prevSummaryRes] = await Promise.all([
           request<StatsSummary>({ url: `/tokens/summary`, data: { startDate, endDate } }),
           request<{ data: DailyStats[] }>({ url: `/tokens/daily`, data: { startDate, endDate } }),
           request<{ models: string[] }>({ url: `/tokens/models` }),
+          request<StatsSummary>({ url: `/tokens/summary`, data: { startDate: prevStartDate, endDate: prevEndDate } }),
         ])
 
         // 基础数据
@@ -128,6 +141,14 @@ export const useStatsStore = defineStore('stats', {
         this.modelStats = summaryRes.modelDistribution || []
         this.dailyStats = dailyRes?.data || []
         this.modelList = (modelsRes?.models || []).filter(Boolean)
+
+        // 增幅：当前 vs 上一周期
+        const prevTokens = prevSummaryRes?.totalTokens || 0
+        if (prevTokens > 0) {
+          this.totalChange = Math.round(((this.totalTokens - prevTokens) / prevTokens) * 100)
+        } else {
+          this.totalChange = 0
+        }
 
         // 计算费用（元）
         this.totalCostRMB = (this.totalTokens / 1_000_000) * PRICE_RMB_PER_M_TOKEN

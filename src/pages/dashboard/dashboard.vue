@@ -27,10 +27,19 @@
 
     <!-- 统计卡片 -->
     <view v-else class="stats-grid">
-      <!-- 总 Token -->
+      <!-- 总 Token（带增幅） -->
       <view class="stat-card">
         <view class="stat-label">总 Token</view>
         <view class="stat-value">{{ formatNum(stats.totalTokens) }}</view>
+        <view
+          v-if="!stats.loading"
+          class="stat-change"
+          :class="stats.totalChange >= 0 ? 'up' : 'down'"
+        >
+          <text>{{ stats.totalChange >= 0 ? '↑' : '↓' }}</text>
+          <text>{{ Math.abs(stats.totalChange) }}%</text>
+          <text class="change-hint">vs 上周期</text>
+        </view>
       </view>
       <!-- Prompt Token -->
       <view class="stat-card">
@@ -346,6 +355,20 @@ function switchTab(key: string) {
   font-weight: 600;
   color: #f7f8f8;
   font-family: 'JetBrains Mono', monospace;
+}
+.stat-change {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  font-size: 12px;
+  margin-top: 4px;
+  &.up { color: #22c55e; }
+  &.down { color: #ef4444; }
+}
+.change-hint {
+  font-size: 10px;
+  opacity: 0.7;
+  margin-left: 2px;
 }
 .stat-sub { margin-top: 4px; }
 .cost-ratelabel {
