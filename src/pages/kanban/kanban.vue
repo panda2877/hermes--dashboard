@@ -18,19 +18,17 @@
 
     <!-- 筛选栏 -->
     <view class="filter-row">
-      <u-input
+      <input
+        class="filter-input"
         v-model="projectFilter"
         placeholder="项目"
-        :clearable="true"
-        :custom-style="{ backgroundColor: '#191a1b', color: '#f7f8f8', borderColor: 'rgba(255,255,255,0.08)' }"
-        class="filter-input"
+        placeholder-class="placeholder"
       />
-      <u-input
+      <input
+        class="filter-input"
         v-model="assigneeFilter"
         placeholder="负责人"
-        :clearable="true"
-        :custom-style="{ backgroundColor: '#191a1b', color: '#f7f8f8', borderColor: 'rgba(255,255,255,0.08)' }"
-        class="filter-input"
+        placeholder-class="placeholder"
       />
     </view>
 
@@ -195,6 +193,24 @@ function switchTab(key: string) {
 
 .filter-input {
   flex: 1;
+  height: 36px;
+  background: #191a1b;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 6px;
+  color: #f7f8f8;
+  font-size: 13px;
+  padding: 0 10px;
+  outline: none;
+  caret-color: #5e6ad2;
+  box-sizing: border-box;
+
+  &::placeholder {
+    color: rgba(255, 255, 255, 0.3);
+  }
+
+  &:focus {
+    border-color: rgba(94, 106, 210, 0.6);
+  }
 }
 
 .kanban-columns {

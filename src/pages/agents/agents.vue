@@ -14,15 +14,12 @@
           {{ tab.label }}
         </view>
       </view>
-      <u-button
-        type="primary"
-        size="small"
-        :plain="true"
-        @click="handleRefresh"
+      <button
         class="refresh-btn"
+        @click="handleRefresh"
       >
         刷新
-      </u-button>
+      </button>
     </view>
 
     <!-- Agent 卡片网格 -->
@@ -160,6 +157,24 @@ function switchTab(key: string) {
 
 .refresh-btn {
   margin-top: 4px;
+  height: 32px;
+  padding: 0 16px;
+  background: transparent;
+  border: 1px solid #5e6ad2;
+  border-radius: 6px;
+  color: #5e6ad2;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 0.2s;
+  white-space: nowrap;
+
+  &:hover {
+    background: rgba(94, 106, 210, 0.1);
+  }
+
+  &:active {
+    background: rgba(94, 106, 210, 0.2);
+  }
 }
 
 .agents-grid {

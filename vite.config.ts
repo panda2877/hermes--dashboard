@@ -19,4 +19,8 @@ export default defineConfig({
       },
     },
   },
+  // uView 2.x 需 transpile 才能在 Vue 3 下正确运行
+  optimizeDeps: {
+    include: ["uview-ui"],
+  },
 });
