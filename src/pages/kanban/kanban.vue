@@ -564,9 +564,13 @@ function cleanTitle(title: string): string {
 
 // 移动端（宽度 ≤ 640px）：三列看板每列很窄，项目名和负责人分行显示
 @media (max-width: 640px) {
-  .task-project,
+  .task-project {
+    width: 100%;
+  }
+
   .task-assignee {
     width: 100%;
+    text-align: right;
   }
 }
 
