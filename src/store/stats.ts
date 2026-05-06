@@ -181,7 +181,7 @@ export const useStatsStore = defineStore('stats', {
 
     setSelectedModel(model: string) {
       this.selectedModel = model
-      // TODO: 按模型筛选统计
+      this.fetchStats()
     },
   },
 })
