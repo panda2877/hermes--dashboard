@@ -29,6 +29,7 @@ unpackage/
 backend/node_modules/
 backend/logs/
 backend/*.local.env
+backend/data/       # 运行时缓存（模型健康状态等）
 
 # Lock files (optional - some teams keep these)
 # package-lock.json

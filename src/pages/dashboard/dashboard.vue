@@ -3,17 +3,6 @@
     <!-- 顶部导航 -->
     <view class="nav-bar">
       <view class="nav-title">统计看板</view>
-      <view class="nav-tabs">
-        <view
-          v-for="tab in tabs"
-          :key="tab.key"
-          class="nav-tab"
-          :class="{ active: currentTab === tab.key }"
-          @click="switchTab(tab.key)"
-        >
-          {{ tab.label }}
-        </view>
-      </view>
     </view>
 
     <!-- 加载中 / 错误 -->
@@ -157,12 +146,25 @@
           <!-- 图例 -->
           <view class="pie-legend">
             <view
-              v-for="(item, i) in stats.modelStats.filter(s => s.tokens > 0)"
+              v-for="(item, i) in stats.modelStats.filter(s => s.tokens > 0 && s.model)"
               :key="i"
               class="pie-row"
             >
               <view class="pie-dot" :style="{ background: pieColors[i % pieColors.length] }" />
               <text class="pie-label">{{ item.model || '(未知)' }}</text>
+              <!-- 模型状态标识 -->
+              <text
+                v-if="item.status === 'healthy'"
+                class="model-status healthy"
+              >正常</text>
+              <text
+                v-else-if="item.status === 'unhealthy'"
+                class="model-status unhealthy"
+              >异常</text>
+              <text
+                v-else
+                class="model-status unknown"
+              >未知</text>
               <text class="pie-tokens">{{ formatNum(item.tokens) }}</text>
               <text class="pie-pct">{{ item.percentage }}%</text>
             </view>
@@ -178,7 +180,6 @@ import { ref, computed, onMounted } from 'vue'
 import { useStatsStore } from '@/store/stats'
 
 const stats = useStatsStore()
-const currentTab = ref('dashboard')
 const hoveredBar = ref(-1)
 
 // 页面加载时拉取真实数据
@@ -213,7 +214,7 @@ const pieSegments = computed(() => {
   const circumference = 2 * Math.PI * 40 // r=40
   let offset = 0
   return stats.modelStats
-    .filter(m => m.tokens > 0)
+    .filter(m => m.tokens > 0 && m.model)
     .map(m => {
       const pct = m.tokens / total
       const dash = `${pct * circumference} ${circumference}`
@@ -233,12 +234,6 @@ function onModelChange(e: any) {
 
 // ── 辅助函数 ─────────────────────────────────────────────────────────────────
 
-const tabs = [
-  { key: 'dashboard', label: '统计' },
-  { key: 'kanban', label: '任务' },
-  { key: 'agents', label: 'Agent' },
-]
-
 const timeOptions = [
   { key: 'today', label: '本日' },
   { key: 'week', label: '本周' },
@@ -247,7 +242,8 @@ const timeOptions = [
 
 const pieColors = ['#5e6ad2', '#22c55e', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4']
 
-function formatNum(n: number): string {
+function formatNum(n: number | undefined | null): string {
+  if (n == null || isNaN(n)) return '0'
   if (n >= 1_000_000) return (n / 1_000_000).toFixed(1) + 'M'
   if (n >= 1_000) return (n / 1_000).toFixed(1) + 'K'
   return n.toLocaleString()
@@ -258,16 +254,6 @@ function barHeight(val: number): number {
   const max = Math.max(...stats.trendStats.map(d => d.tokens), 1)
   return Math.max((val / max) * 160, 4)
 }
-
-function switchTab(key: string) {
-  currentTab.value = key
-  const routes: Record<string, string> = {
-    dashboard: '/pages/dashboard/dashboard',
-    kanban: '/pages/kanban/kanban',
-    agents: '/pages/agents/agents',
-  }
-  uni.reLaunch({ url: routes[key] })
-}
 </script>
 
 <style lang="scss" scoped>
@@ -275,6 +261,8 @@ function switchTab(key: string) {
   padding: 20px 16px;
   background: #08090a;
   min-height: 100vh;
+  overflow-x: hidden;
+  touch-action: pan-y;
 }
 
 .nav-bar { margin-bottom: 24px; }
@@ -596,5 +584,24 @@ function switchTab(key: string) {
   width: 36px;
   text-align: right;
   font-family: 'JetBrains Mono', monospace;
+}
+.model-status {
+  font-size: 10px;
+  padding: 1px 5px;
+  border-radius: 4px;
+  flex-shrink: 0;
+  font-weight: 500;
+}
+.model-status.healthy {
+  color: #22c55e;
+  background: rgba(34, 197, 94, 0.12);
+}
+.model-status.unhealthy {
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.12);
+}
+.model-status.unknown {
+  color: #62666d;
+  background: rgba(98, 102, 109, 0.12);
 }
 </style>

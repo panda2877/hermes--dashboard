@@ -3,17 +3,6 @@
     <!-- 顶部导航 -->
     <view class="nav-bar">
       <view class="nav-title">任务看板</view>
-      <view class="nav-tabs">
-        <view
-          v-for="tab in tabs"
-          :key="tab.key"
-          class="nav-tab"
-          :class="{ active: currentTab === tab.key }"
-          @click="switchTab(tab.key)"
-        >
-          {{ tab.label }}
-        </view>
-      </view>
       <view class="nav-refresh" @click="kanban.refresh()">
         <text class="refresh-icon" :class="{ spinning: kanban.loading }">↻</text>
       </view>
@@ -127,7 +116,6 @@ import { useKanbanStore, type TaskItem } from '@/store/kanban'
 import Badge from '@/components/Badge.vue'
 
 const kanban = useKanbanStore()
-const currentTab = ref('kanban')
 const draggedTask = ref<TaskItem | null>(null)
 
 // ── 生命周期 ─────────────────────────────────────────────────────────────────
@@ -135,24 +123,6 @@ const draggedTask = ref<TaskItem | null>(null)
 onMounted(() => {
   kanban.refresh()
 })
-
-// ── Tab 导航 ─────────────────────────────────────────────────────────────────
-
-const tabs = [
-  { key: 'dashboard', label: '统计' },
-  { key: 'kanban', label: '任务' },
-  { key: 'agents', label: 'Agent' },
-]
-
-function switchTab(key: string) {
-  currentTab.value = key
-  const routes: Record<string, string> = {
-    dashboard: '/pages/dashboard/dashboard',
-    kanban: '/pages/kanban/kanban',
-    agents: '/pages/agents/agents',
-  }
-  uni.reLaunch({ url: routes[key] })
-}
 
 // ── 列数据 ───────────────────────────────────────────────────────────────────
 
@@ -259,11 +229,14 @@ function cleanTitle(title: string): string {
   padding: 20px 16px;
   background: #08090a;
   min-height: 100vh;
+  overflow-x: hidden;
+  touch-action: pan-y;
 }
 
 .nav-bar {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   margin-bottom: 16px;
 }
 
@@ -271,17 +244,6 @@ function cleanTitle(title: string): string {
   font-size: 22px;
   font-weight: 700;
   color: #f7f8f8;
-}
-
-.nav-tabs {
-  flex: 1;
-  display: flex;
-  gap: 4px;
-  background: #0f1011;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 8px;
-  padding: 4px;
-  margin-left: 12px;
 }
 
 .nav-refresh {
@@ -294,7 +256,6 @@ function cleanTitle(title: string): string {
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 8px;
   cursor: pointer;
-  margin-left: 12px;
 
   .refresh-icon {
     font-size: 18px;

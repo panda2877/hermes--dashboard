@@ -223,6 +223,25 @@ function getKanbanStats() {
   return Object.entries(merged).map(([status, count]) => ({ status, count }))
 }
 
+/**
+ * 按负责人统计待办（backlog）任务数量
+ */
+function getBacklogCounts() {
+  const rows = query(`
+    SELECT assignee, COUNT(*) AS count
+    FROM tasks
+    WHERE status IN ('backlog', 'in-progress', 'in_progress')
+    GROUP BY assignee
+  `)
+  // sqlite GROUP BY 对 NULL 的处理：返回空字符串或 null，统一映射
+  const result = {}
+  for (const row of rows) {
+    const key = row.assignee || 'unknown'
+    result[key] = parseInt(row.count, 10)
+  }
+  return result
+}
+
 module.exports = {
   initDb,
   closeDb,
@@ -232,4 +251,5 @@ module.exports = {
   getTaskById,
   updateTaskStatus,
   getKanbanStats,
+  getBacklogCounts,
 }

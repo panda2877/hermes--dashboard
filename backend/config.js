@@ -30,6 +30,19 @@ module.exports = {
     dbPath: process.env.KANBAN_DB_PATH || '/home/agentuser/.hermes/kanban.db',
   },
 
+  // ── Hermes Agent ────────────────────────────────────────────────────────
+  hermes: {
+    profilesPath: process.env.HERMES_PROFILES_PATH || '/home/agentuser/.hermes/profiles',
+    mainGatewayPid: parseInt(process.env.HERMES_MAIN_GATEWAY_PID || '195514', 10),
+    // profile id → 中文名映射（可扩展）
+    profileNames: {
+      yinyue: '银月',
+      wensiyue: '文思月',
+      xingruyin: '辛如音',
+      ziling: '紫灵',
+    },
+  },
+
   // ── 认证 ───────────────────────────────────────────────────────────────
   auth: {
     // 前端登录密钥（后续可改为数据库存储）

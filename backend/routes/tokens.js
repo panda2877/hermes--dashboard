@@ -6,6 +6,7 @@
 const express = require('express')
 const router = express.Router()
 const postgres = require('../services/postgres')
+const litellmApi = require('../services/litellmApi')
 
 // ── 辅助：解析日期范围 ────────────────────────────────────────────────────────
 
@@ -36,7 +37,17 @@ router.get('/summary', async (req, res) => {
   try {
     const { startDate, endDate } = parseDateRange(req.query)
     const data = await postgres.getTokensSummary(startDate, endDate)
-    res.json(data)
+
+    // 模型健康状态由后台定时同步，直接从内存读取，零等待
+    const modelStatus = litellmApi.getModelHealth()
+
+    res.json({
+      ...data,
+      modelDistribution: (data.modelDistribution || []).map((m) => ({
+        ...m,
+        status: modelStatus[m.model] || 'unknown',
+      })),
+    })
   } catch (err) {
     console.error('[tokens/summary]', err)
     res.status(500).json({ error: '查询失败', detail: err.message })

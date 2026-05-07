@@ -21,6 +21,7 @@ export interface ModelStats {
   model: string
   tokens: number
   percentage: number
+  status: string   // 'healthy' | 'unhealthy' | 'unknown'
 }
 
 export interface StatsSummary {
@@ -165,18 +166,18 @@ export const useStatsStore = defineStore('stats', {
         if (this.selectedModel) trendParams.model = this.selectedModel
 
         const [summaryRes, trendRes, modelsRes, prevSummaryRes] = await Promise.all([
-          request<StatsSummary>({ url: `/tokens/summary`, data: { startDate, endDate } }),
-          request<{ data: TrendItem[] }>({ url: `/tokens/trend`, data: trendParams }),
-          request<{ models: string[] }>({ url: `/tokens/models` }),
-          request<StatsSummary>({ url: `/tokens/summary`, data: { startDate: prevStartDate, endDate: prevEndDate } }),
+          request<StatsSummary>({ url: `/tokens/summary`, data: { startDate, endDate } }).catch(() => null),
+          request<{ data: TrendItem[] }>({ url: `/tokens/trend`, data: trendParams }).catch(() => null),
+          request<{ models: string[] }>({ url: `/tokens/models` }).catch(() => null),
+          request<StatsSummary>({ url: `/tokens/summary`, data: { startDate: prevStartDate, endDate: prevEndDate } }).catch(() => null),
         ])
 
-        // 基础数据
-        this.totalTokens = summaryRes.totalTokens
-        this.totalPromptTokens = summaryRes.totalPromptTokens
-        this.totalCompletionTokens = summaryRes.totalCompletionTokens
-        this.totalCost = summaryRes.totalCost
-        this.modelStats = summaryRes.modelDistribution || []
+        // 基础数据 — 单个请求失败不影响其他字段
+        this.totalTokens = summaryRes?.totalTokens ?? 0
+        this.totalPromptTokens = summaryRes?.totalPromptTokens ?? 0
+        this.totalCompletionTokens = summaryRes?.totalCompletionTokens ?? 0
+        this.totalCost = summaryRes?.totalCost ?? 0
+        this.modelStats = summaryRes?.modelDistribution || []
         this.trendStats = (trendRes?.data || []).map(d => ({
           ...d,
           label: formatTrendLabel(d.label, this.timeRange),

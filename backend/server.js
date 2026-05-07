@@ -10,6 +10,7 @@ const rateLimit = require('express-rate-limit')
 const config = require('./config')
 const postgres = require('./services/postgres')
 const sqlite = require('./services/sqlite')
+const litellmApi = require('./services/litellmApi')
 
 // ── 路由 ─────────────────────────────────────────────────────────────────────
 const authRouter = require('./routes/auth')
@@ -88,6 +89,11 @@ async function start() {
     console.log(`🚀 Hermes Dashboard BFF running on http://0.0.0.0:${port}`)
     console.log(`   PostgreSQL: ${config.postgres.host}:${config.postgres.port}/${config.postgres.database}`)
     console.log(`   SQLite: ${config.sqlite.dbPath}`)
+
+    // 启动 LiteLLM 模型健康状态后台同步（每2分钟）
+    litellmApi.startHealthSync().catch(err => {
+      console.warn('[startup] Health sync start failed:', err.message)
+    })
   })
 }
 
