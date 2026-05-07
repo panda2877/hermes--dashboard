@@ -5,6 +5,7 @@
  *   ~/.hermes/profiles/<id>/gateway_state.json  → 子进程运行时状态
  *   ~/.hermes/profiles/<id>/config.yaml        → 默认模型
  *   ps -p <PID> -o etimes=                    → 各 Gateway 运行时长（秒）
+ *   ~/.hermes/state.db（主）/ <profile>/state.db（子） → session 活跃判断
  *   kanban.db → 按负责人统计待办数量
  */
 
@@ -15,12 +16,16 @@ const { execSync } = require('child_process')
 const YAML = require('yaml')
 const config = require('../config')
 const sqlite = require('../services/sqlite')
+const initSqlJs = require('sql.js')
 
 const router = express.Router()
 
 const PROFILES_DIR = config.hermes.profilesPath
 const MAIN_PID = config.hermes.mainGatewayPid
 const PROFILE_NAMES = config.hermes.profileNames
+
+// Agent 活跃阈值：最后消息超过此秒数视为"空闲"（默认 20 分钟）
+const IDLE_THRESHOLD_SECS = 20 * 60
 
 // ── 工具函数 ─────────────────────────────────────────────────────────────────
 
@@ -70,6 +75,75 @@ function readGatewayState(profileId) {
   }
 }
 
+/**
+ * 从 state.db 判断 Agent 工作状态
+ * 返回值：'working' | 'idle' | null（无法判断时返回 null）
+ *
+ * 逻辑：
+ *   1. 找 ended_at IS NULL 的 session
+ *   2. 查该 session 最后一条消息的 timestamp
+ *   3. 如果 last_active 在 IDLE_THRESHOLD_SECS 内 → 'working'
+ *   4. 否则 → 'idle'
+ */
+async function getAgentWorkStatus(stateDbPath) {
+  if (!fs.existsSync(stateDbPath)) return null
+
+  try {
+    const SQL = await initSqlJs()
+    const buffer = fs.readFileSync(stateDbPath)
+    const db = new SQL.Database(buffer)
+
+    // 找 ended_at IS NULL 的最新 session
+    const stmt = db.prepare(`
+      SELECT id, started_at
+      FROM sessions
+      WHERE ended_at IS NULL
+      ORDER BY started_at DESC
+      LIMIT 1
+    `)
+
+    let status = null
+    if (stmt.step()) {
+      const session = stmt.getAsObject()
+      const sessionId = session.id
+
+      // 查该 session 最后一条消息的时间
+      const msgStmt = db.prepare(`
+        SELECT timestamp FROM messages
+        WHERE session_id = ?
+        ORDER BY timestamp DESC
+        LIMIT 1
+      `)
+      msgStmt.bind([sessionId])
+
+      let lastActive = null
+      if (msgStmt.step()) {
+        lastActive = msgStmt.getAsObject().timestamp
+      }
+      msgStmt.free()
+
+      // 无 messages 记录 → 不算工作中（可能是刚创建的僵尸 session）
+      if (lastActive === null) {
+        status = 'idle'
+      } else {
+        const nowSecs = Date.now() / 1000
+        const idleSecs = nowSecs - lastActive
+        status = idleSecs < IDLE_THRESHOLD_SECS ? 'working' : 'idle'
+      }
+    } else {
+      // 没有任何活跃 session → 空闲
+      status = 'idle'
+    }
+
+    stmt.free()
+    db.close()
+    return status
+  } catch (err) {
+    console.warn(`[agents] 读取 state.db 失败 ${stateDbPath}:`, err.message)
+    return null
+  }
+}
+
 // ── GET /api/agents ─────────────────────────────────────────────────────────
 
 router.get('/', async (_req, res) => {
@@ -90,12 +164,17 @@ router.get('/', async (_req, res) => {
       const model = readDefaultModel(profileId)
       const name = PROFILE_NAMES[profileId] || profileId
 
+      // 判断 agent 工作状态
+      const stateDbPath = path.join(PROFILES_DIR, profileId, 'state.db')
+      const workStatus = await getAgentWorkStatus(stateDbPath)
+
       profiles.push({
         id: profileId,
         name,
         model,
         pid: state.pid,
         state: state.gateway_state === 'running' ? 'running' : 'stopped',
+        workStatus: workStatus, // 'working' | 'idle' | null
         uptime: formatUptime(uptimeSeconds),
         uptimeSeconds: uptimeSeconds,
         isMain: false,
@@ -104,12 +183,16 @@ router.get('/', async (_req, res) => {
 
     // 2. 主 Gateway 作为银月的 Agent（id='yinyue'）
     const mainUptimeSecs = getPidUptime(MAIN_PID)
+    const mainStateDbPath = path.join(config.hermes.profilesPath, '..', 'state.db')
+    const mainWorkStatus = await getAgentWorkStatus(mainStateDbPath)
+
     profiles.unshift({
       id: 'yinyue',
       name: PROFILE_NAMES['yinyue'] || '银月',
       model: '—',
       pid: MAIN_PID,
       state: mainUptimeSecs !== null ? 'running' : 'stopped',
+      workStatus: mainWorkStatus,
       uptime: formatUptime(mainUptimeSecs),
       uptimeSeconds: mainUptimeSecs,
       isMain: true,

@@ -35,9 +35,9 @@
             <text class="agent-name">{{ agent.name }}</text>
             <text class="agent-model">{{ agent.model }}</text>
           </view>
-          <view class="status-badge" :class="stateClass(agent.state)">
+          <view class="status-badge" :class="workBadgeClass(agent)">
             <text class="status-dot" />
-            <text class="status-txt">{{ stateLabel(agent.state) }}</text>
+            <text class="status-txt">{{ workBadgeLabel(agent) }}</text>
           </view>
         </view>
 
@@ -88,16 +88,16 @@ function avatarColor(id: string): string {
   return avatarColors[id] || '#5e6ad2'
 }
 
-function stateLabel(state: string): string {
-  if (state === 'running') return '运行中'
-  if (state === 'stopped') return '已停止'
-  return '异常'
+function workBadgeLabel(agent: any): string {
+  if (agent.workStatus === 'working') return '工作中'
+  if (agent.workStatus === 'idle') return '空闲'
+  return '断线'
 }
 
-function stateClass(state: string): string {
-  if (state === 'running') return 'status-running'
-  if (state === 'stopped') return 'status-stopped'
-  return 'status-error'
+function workBadgeClass(agent: any): string {
+  if (agent.workStatus === 'working') return 'status-working'
+  if (agent.workStatus === 'idle') return 'status-idle'
+  return 'status-disconnected'
 }
 </script>
 
@@ -249,19 +249,19 @@ function stateClass(state: string): string {
   background: currentColor;
 }
 
-.status-running {
+.status-working {
   background: rgba(34, 197, 94, 0.12);
   color: #22c55e;
 }
 
-.status-stopped {
-  background: rgba(138, 143, 152, 0.12);
-  color: #8a8f98;
+.status-idle {
+  background: rgba(245, 158, 11, 0.12);
+  color: #f59e0b;
 }
 
-.status-error {
-  background: rgba(239, 68, 68, 0.12);
-  color: #ef4444;
+.status-disconnected {
+  background: rgba(138, 143, 152, 0.12);
+  color: #8a8f98;
 }
 
 /* 统计行 */

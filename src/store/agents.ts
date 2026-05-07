@@ -8,6 +8,7 @@ interface AgentRaw {
   model: string
   pid: number
   state: string
+  workStatus: string | null
   uptime: string
   uptimeSeconds: number
   backlogCount: number
@@ -24,7 +25,8 @@ export interface AgentInfo {
   name: string
   model: string
   pid: number
-  state: 'running' | 'stopped' | 'error'
+  state: 'running' | 'stopped'
+  workStatus: 'working' | 'idle' | 'disconnected' | null
   uptime: string
   uptimeSeconds: number
   backlogCount: number
@@ -50,21 +52,30 @@ export const useAgentsStore = defineStore('agents', {
       this.error = null
       try {
         const res = await request<ApiResponse>({ url: '/agents' })
-        this.agents = res.agents.map((a) => ({
-          id: a.id,
-          name: a.name,
-          model: a.model,
-          pid: a.pid,
-          state: a.state === 'running'
-            ? 'running'
-            : a.state === 'stopped'
-              ? 'stopped'
-              : 'error',
-          uptime: a.uptime,
-          uptimeSeconds: a.uptimeSeconds,
-          backlogCount: a.backlogCount ?? 0,
-          isMain: a.isMain ?? false,
-        }))
+        this.agents = res.agents.map((a) => {
+          // 工作状态计算：
+          //   - gateway 没运行 → disconnected（断线）
+          //   - gateway 运行中 + workStatus='working' → 工作中
+          //   - gateway 运行中 + workStatus='idle' → 空闲
+          //   - gateway 运行中 + workStatus=null → idle（兜底）
+          let workStatus: AgentInfo['workStatus'] = 'disconnected'
+          if (a.state === 'running') {
+            workStatus = a.workStatus === 'working' ? 'working' : 'idle'
+          }
+
+          return {
+            id: a.id,
+            name: a.name,
+            model: a.model,
+            pid: a.pid,
+            state: a.state === 'running' ? 'running' : 'stopped',
+            workStatus,
+            uptime: a.uptime,
+            uptimeSeconds: a.uptimeSeconds,
+            backlogCount: a.backlogCount ?? 0,
+            isMain: a.isMain ?? false,
+          }
+        })
       } catch (err: any) {
         this.error = err?.message || '加载失败'
       } finally {
