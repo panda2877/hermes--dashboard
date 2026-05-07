@@ -252,4 +252,5 @@ module.exports = {
   updateTaskStatus,
   getKanbanStats,
   getBacklogCounts,
+  query,
 }

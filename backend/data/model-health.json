@@ -1,0 +1,9 @@
+{
+  "status": {
+    "deepseek-sensenova": "healthy",
+    "mimo": "healthy",
+    "deepseek-backup": "healthy",
+    "minimax-main": "unhealthy"
+  },
+  "updatedAt": "2026-05-07T16:14:51.309Z"
+}

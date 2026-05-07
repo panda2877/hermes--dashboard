@@ -115,6 +115,7 @@ export const useStatsStore = defineStore('stats', {
     backupCost: number     // deepseek-backup 费用（元）
     totalCostRMB: number   // 全部模型按 0.15元/M 计算的总费用
     totalChange: number    // 增幅：当前 vs 上一周期（百分比）
+    hasPrevData: boolean   // 是否有上一周期数据可对比
     trendStats: TrendItem[] // 趋势数据（不同粒度）
     modelStats: ModelStats[]
     modelList: string[]
@@ -130,6 +131,7 @@ export const useStatsStore = defineStore('stats', {
     backupCost: 0,
     totalCostRMB: 0,
     totalChange: 0,
+    hasPrevData: false,
     trendStats: [],
     modelStats: [],
     modelList: [],
@@ -186,7 +188,8 @@ export const useStatsStore = defineStore('stats', {
 
         // 增幅：当前 vs 上一周期
         const prevTokens = prevSummaryRes?.totalTokens || 0
-        if (prevTokens > 0) {
+        this.hasPrevData = prevSummaryRes !== null && prevTokens > 0
+        if (this.hasPrevData) {
           this.totalChange = Math.round(((this.totalTokens - prevTokens) / prevTokens) * 100)
         } else {
           this.totalChange = 0

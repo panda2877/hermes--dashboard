@@ -51,6 +51,38 @@ module.exports = {
     jwtSecret: process.env.JWT_SECRET || 'hermes-dashboard-secret-2026',
   },
 
+  // ── Git 仓库配置 ───────────────────────────────────────────────────────
+  repos: [
+    {
+      id: 'hermes-dashboard',
+      name: 'hermes-dashboard',
+      desc: 'Hermes 多功能看板前端项目（uni-app + Vue 3）',
+      color: '#7170ff',
+      path: '/home/agentuser/public/hermes-dashboard',
+    },
+    {
+      id: 'hermes-agent',
+      name: 'hermes-agent',
+      desc: 'Hermes Agent 核心仓库（CLI / Gateway / Skills）',
+      color: '#10b981',
+      path: '/home/agentuser/.hermes/hermes-agent',
+    },
+    {
+      id: 'obsidian-vault',
+      name: 'obsidian-vault',
+      desc: 'Obsidian 知识库（项目管理 / 技术文档 / Wiki）',
+      color: '#f59e0b',
+      path: '/home/agentuser/obsidian-vault',
+    },
+    {
+      id: 'capability-platform',
+      name: 'capability-platform',
+      desc: 'Capability Platform（todo-system）',
+      color: '#ef4444',
+      path: '/home/agentuser/git-repos/todo-system.git',
+    },
+  ],
+
   // ── 请求限流 ───────────────────────────────────────────────────────────
   rateLimit: {
     windowMs: 60 * 1000, // 1 分钟

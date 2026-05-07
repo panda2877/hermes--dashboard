@@ -11,12 +11,15 @@ const config = require('./config')
 const postgres = require('./services/postgres')
 const sqlite = require('./services/sqlite')
 const litellmApi = require('./services/litellmApi')
+const gitRepo = require('./services/gitRepo')
 
 // ── 路由 ─────────────────────────────────────────────────────────────────────
 const authRouter = require('./routes/auth')
 const tokensRouter = require('./routes/tokens')
 const kanbanRouter = require('./routes/kanban')
 const agentsRouter = require('./routes/agents')
+const reposRouter = require('./routes/repos')
+const milestoneRouter = require('./routes/milestone')
 
 // ── Express 应用 ─────────────────────────────────────────────────────────────
 const app = express()
@@ -60,6 +63,9 @@ app.use('/api/auth', authRouter)
 app.use('/api/tokens', tokensRouter)
 app.use('/api/kanban', kanbanRouter)
 app.use('/api/agents', agentsRouter)
+app.use('/api/repos', reposRouter)
+app.use('/api/kanban', milestoneRouter)
+app.use('/api', milestoneRouter)  // projects 路由挂在 /api 下
 
 // 404
 app.use((_req, res) => {
@@ -94,6 +100,9 @@ async function start() {
     litellmApi.startHealthSync().catch(err => {
       console.warn('[startup] Health sync start failed:', err.message)
     })
+
+    // 启动 Git 仓库状态后台同步（每10分钟）
+    gitRepo.startRepoSync(config.repos)
   })
 }
 

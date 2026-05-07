@@ -33,7 +33,15 @@
     {
       "path": "pages/agents/agents",
       "style": {
-        "navigationBarTitleText": "Agent 状态",
+        "navigationBarTitleText": "Agent",
+        "navigationStyle": "custom",
+        "backgroundColor": "#08090a"
+      }
+    },
+    {
+      "path": "pages/repo/repo",
+      "style": {
+        "navigationBarTitleText": "仓库",
         "navigationStyle": "custom",
         "backgroundColor": "#08090a"
       }
@@ -67,6 +75,12 @@
         "text": "Agent",
         "iconPath": "static/icons/agents.svg",
         "selectedIconPath": "static/icons/agents-active.svg"
+      },
+      {
+        "pagePath": "pages/repo/repo",
+        "text": "仓库",
+        "iconPath": "static/icons/repo.svg",
+        "selectedIconPath": "static/icons/repo-active.svg"
       }
     ]
   }

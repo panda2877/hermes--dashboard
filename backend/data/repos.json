@@ -1,0 +1,85 @@
+{
+  "repos": [
+    {
+      "id": "hermes-dashboard",
+      "name": "hermes-dashboard",
+      "desc": "Hermes 多功能看板前端项目（uni-app + Vue 3）",
+      "color": "#7170ff",
+      "path": "/home/agentuser/public/hermes-dashboard",
+      "branch": "main",
+      "remote": "git@github.com:panda2877/hermes--dashboard.git",
+      "dirtyFiles": 16,
+      "ahead": 0,
+      "behind": 0,
+      "syncStatus": "dirty",
+      "lastCommit": {
+        "hash": "197500b",
+        "message": "feat(TSK-022): Agent工作状态三态判断(working/idle/disconnected)",
+        "author": "Hermes Agent",
+        "timestamp": 1778125558
+      },
+      "fetchedAt": "2026-05-07T16:14:49.412Z"
+    },
+    {
+      "id": "hermes-agent",
+      "name": "hermes-agent",
+      "desc": "Hermes Agent 核心仓库（CLI / Gateway / Skills）",
+      "color": "#10b981",
+      "path": "/home/agentuser/.hermes/hermes-agent",
+      "branch": "main",
+      "remote": "git@github.com:panda2877/hermes-agent.git",
+      "dirtyFiles": 3,
+      "ahead": 0,
+      "behind": 0,
+      "syncStatus": "dirty",
+      "lastCommit": {
+        "hash": "7651e9e7",
+        "message": "feat: add snapshot plugin with tasks_store",
+        "author": "Hermes Agent",
+        "timestamp": 1777896029
+      },
+      "fetchedAt": "2026-05-07T16:14:49.439Z"
+    },
+    {
+      "id": "obsidian-vault",
+      "name": "obsidian-vault",
+      "desc": "Obsidian 知识库（项目管理 / 技术文档 / Wiki）",
+      "color": "#f59e0b",
+      "path": "/home/agentuser/obsidian-vault",
+      "branch": "main",
+      "remote": "git@github.com:panda2877/obsidian-vault.git",
+      "dirtyFiles": 2,
+      "ahead": 0,
+      "behind": 0,
+      "syncStatus": "dirty",
+      "lastCommit": {
+        "hash": "618301b",
+        "message": "refactor(看板前端): 里程碑视图重构为项目-里程碑-任务三层结构",
+        "author": "Hermes Agent",
+        "timestamp": 1778137489
+      },
+      "fetchedAt": "2026-05-07T16:14:49.459Z"
+    },
+    {
+      "id": "capability-platform",
+      "name": "capability-platform",
+      "desc": "Capability Platform（todo-system）",
+      "color": "#ef4444",
+      "path": "/home/agentuser/git-repos/todo-system.git",
+      "branch": "master",
+      "remote": "https://github.com/panda2877/capabilityPlatform.git",
+      "dirtyFiles": 2,
+      "ahead": 0,
+      "behind": 0,
+      "syncStatus": "dirty",
+      "lastCommit": {
+        "hash": "b0d7530",
+        "message": "更新了删除接口的格式",
+        "author": "panda",
+        "timestamp": 1777038671
+      },
+      "fetchedAt": "2026-05-07T16:14:49.477Z"
+    }
+  ],
+  "updatedAt": "2026-05-07T16:14:49.477Z"
+}
