@@ -271,6 +271,7 @@ onMounted(() => { fetchRepos() })
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 8px;
   padding: 16px;
+  min-width: 0; /* Allow grid item to shrink below content size on mobile */
   transition: all 0.15s ease;
 
   &:hover {
@@ -315,6 +316,9 @@ onMounted(() => { fetchRepos() })
   color: #f7f8f8;
   margin-bottom: 2px;
   font-family: 'JetBrains Mono', monospace;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .repo-desc {
@@ -354,15 +358,21 @@ onMounted(() => { fetchRepos() })
   display: flex;
   align-items: center;
   gap: 4px;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .meta-icon {
   font-size: 11px;
+  flex-shrink: 0;
 }
 
 .meta-text {
   font-size: 11px;
   color: #8a8f98;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 
   &.ahead-text {
     color: #f59e0b;
