@@ -45,6 +45,14 @@
         "navigationStyle": "custom",
         "backgroundColor": "#08090a"
       }
+    },
+    {
+      "path": "pages/life/life",
+      "style": {
+        "navigationBarTitleText": "生活",
+        "navigationStyle": "custom",
+        "backgroundColor": "#08090a"
+      }
     }
   ],
   "globalStyle": {
@@ -81,6 +89,12 @@
         "text": "仓库",
         "iconPath": "static/icons/repo.svg",
         "selectedIconPath": "static/icons/repo-active.svg"
+      },
+      {
+        "pagePath": "pages/life/life",
+        "text": "生活",
+        "iconPath": "static/icons/life.svg",
+        "selectedIconPath": "static/icons/life-active.svg"
       }
     ]
   }

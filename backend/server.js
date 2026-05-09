@@ -20,6 +20,9 @@ const kanbanRouter = require('./routes/kanban')
 const agentsRouter = require('./routes/agents')
 const reposRouter = require('./routes/repos')
 const milestoneRouter = require('./routes/milestone')
+const cronjobsRouter = require('./routes/cronjobs')
+const skillsRouter = require('./routes/skills')
+const lifeRouter = require('./routes/life')
 
 // ── Express 应用 ─────────────────────────────────────────────────────────────
 const app = express()
@@ -66,6 +69,9 @@ app.use('/api/agents', agentsRouter)
 app.use('/api/repos', reposRouter)
 app.use('/api/kanban', milestoneRouter)
 app.use('/api', milestoneRouter)  // projects 路由挂在 /api 下
+app.use('/api/cronjobs', cronjobsRouter)
+app.use('/api/skills', skillsRouter)
+app.use('/api/life', lifeRouter)
 
 // 404
 app.use((_req, res) => {
